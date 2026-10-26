@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas data builder</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f5;color:#202b36}
+  header{background:#0072bc;color:#fff;padding:18px 24px}
+  header h1{margin:0;font-size:18px}
+  header p{margin:6px 0 0;font-size:12px;color:#d8ebf6;line-height:1.6}
+  main{max-width:1100px;margin:0 auto;padding:22px 20px 40px}
+  .card{background:#fff;border:1px solid #d9e1e7;border-radius:8px;padding:18px 20px;margin-bottom:16px}
+  .step{font-size:11px;font-weight:800;letter-spacing:1px;color:#0072bc;margin-bottom:6px}
+  .card p{font-size:13px;line-height:1.6;margin:0 0 10px;color:#334756}
+  .btn{display:inline-block;background:#0072bc;color:#fff;border:0;border-radius:6px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer}
+  .btn:disabled{background:#9cb8cc;cursor:not-allowed}
+  .btn input{display:none}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #edf1f4;vertical-align:top}
+  th{color:#697784;font-size:11px;white-space:nowrap}
+  td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  td.path{word-break:break-all}
+  tfoot td{font-weight:700;border-top:2px solid #d9e1e7}
+  .ok{color:#2e7d32;font-weight:700}
+  .warn{color:#b26a00;font-weight:700}
+  .bad{color:#c62828;font-weight:700}
+  .skip{color:#697784}
+  .note{display:block;color:#8a5a00;font-weight:400;font-size:11px;margin-top:2px}
+  .tag{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;background:#e8f4fb;color:#005a9c;margin-left:4px}
+  #status{font-size:13px;margin-top:10px;color:#334756}
+  .ways{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch}
+  .way{flex:1 1 260px;border:1px solid #d9e1e7;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .way h3{margin:0;font-size:13px;color:#173b59}
+  .way p{margin:0;font-size:12px;color:#526573;line-height:1.5}
+  .way .btn{align-self:flex-start}
+  .btn.secondary{background:#fff;color:#0072bc;border:1.5px solid #0072bc}
+  .way.off{opacity:.5}
+  .opt{font-size:13px;color:#334756;margin-top:12px;display:flex;gap:8px;align-items:center}
+  .errbox{background:#fdecea;border:1px solid #f5c2bd;border-radius:6px;padding:10px 12px;font-size:13px;color:#8e1d14;margin-top:10px}
+  .saved{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:10px 12px;font-size:13px;color:#1b5e20;margin-top:10px}
+  pre{background:#f5f8fa;border:1px solid #d9e1e7;border-radius:6px;padding:10px;font-size:11px;white-space:pre-wrap;word-break:break-all}
+</style>
+<!-- Catálogo de capas (qué archivos se publican y cómo) -->
+<script src="capas.js"></script>
+<!-- mapshaper (simplificación de geometrías), copia local: funciona sin internet -->
+<script src="lib/mapshaper/modules.js"></script>
+<script src="lib/mapshaper/mapshaper.js"></script>
+</head>
+<body>
+<header>
+  <h1>Atlas data builder · 网站数据打包工具 · Constructor de capas</h1>
+  <p>读取 <b>source/</b> 里的原始 GeoJSON，简化、四舍五入坐标，每个图层写成 <b>data/</b> 里的一个文件，并生成目录 <b>data/atlas_index.js</b>。哪些图层、怎么显示：见 <b>capas.js</b>。<br>
+     Lee los GeoJSON originales de <b>source/</b>, los simplifica y escribe <b>un archivo por capa</b> en <b>data/</b>, más el índice <b>data/atlas_index.js</b>. Qué capas y cómo se ven: <b>capas.js</b>. Nada se sube a internet.</p>
+</header>
+<main>
+  <div class="card">
+    <div class="step">STEP 1 · 第一步 · PASO 1</div>
+    <p>选择整个网站文件夹（包含 index.html、capas.js、source/）。· Elija la carpeta del sitio completa (la que contiene index.html, capas.js y source/).</p>
+    <div class="ways">
+      <div class="way" id="wayA">
+        <h3>方式一：自动保存（推荐）· Opción 1: guardar directo (recomendada)</h3>
+        <p>浏览器会问能否"查看文件"和"保存更改"，都点允许。· El navegador pedirá permiso para ver y guardar cambios: acepte ambos. Los archivos se escriben directamente en data/.</p>
+        <button class="btn" id="pickBtn" type="button">选择文件夹 · Elegir carpeta</button>
+      </div>
+      <div class="way" id="wayB">
+        <h3>方式二：下载 · Opción 2: descargar</h3>
+        <p>如果方式一不行。· Si la opción 1 no funciona. Al final se descarga <b>data.zip</b>: descomprímalo dentro de la carpeta del sitio y acepte sobrescribir los archivos.</p>
+        <label class="btn secondary">选择文件夹 · Elegir carpeta<input type="file" id="folder" webkitdirectory directory multiple hidden></label>
+      </div>
+    </div>
+    <label class="opt"><input type="checkbox" id="onlyChanged" checked> 只处理有变化的图层 · Procesar solo las capas cuyo original cambió (más rápido)</label>
+    <div id="status"></div>
+    <div id="errBox"></div>
+    <div id="savedBox"></div>
+  </div>
+
+  <div class="card" id="resultCard" hidden>
+    <div class="step">STEP 2 · 第二步 · PASO 2 — 结果 · Resultado</div>
+    <table>
+      <thead><tr><th>图层 · Capa (source/)</th><th>类型 · Tipo</th><th>数量 · N</th><th>原始 · Original</th><th>发布 · Publicada</th><th>状态 · Estado</th></tr></thead>
+      <tbody id="rows"></tbody>
+      <tfoot id="foot"></tfoot>
+    </table>
+  </div>
+
+  <div class="card" id="extraCard" hidden>
+    <div class="step">注意 · ATENCIÓN</div>
+    <div id="extraBox"></div>
+  </div>
+
+  <div class="card" id="saveCard" hidden>
+    <div class="step">STEP 3 · 第三步 · PASO 3</div>
+    <p>下载 data.zip，解压到网站文件夹里（覆盖同名文件）。· Descargue <b>data.zip</b> y descomprímalo dentro de la carpeta del sitio, <b>sobrescribiendo</b> los archivos (no borre data/: el zip trae solo las capas que cambiaron).</p>
+    <button class="btn" id="saveBtn">下载 · Descargar data.zip</button>
+  </div>
+  <div class="card">
+    <div class="step">更改密码 · CAMBIAR CONTRASEÑA</div>
+    <p>写新密码，复制下面的代码，粘贴到 index.html 的 <b>ACCESS_HASH</b>。· Escriba la nueva contraseña, copie el código y péguelo en <b>index.html</b>, en la línea <b>const ACCESS_HASH = '…'</b>. La contraseña en sí no se guarda en ningún archivo.</p>
+    <input type="text" id="newPass" placeholder="Nueva contraseña" style="font:inherit;padding:9px 12px;border:1px solid #c9d5de;border-radius:6px;min-width:260px" autocomplete="off">
+    <pre id="newHash">—</pre>
+  </div>
+</main>
+
+<script>
+const TOOL_VERSION = 5;
+const CFG = window.ATLAS_CONFIG;
+const BUILD = (CFG && CFG.build) || {};
+const MB = 1048576;
+const mb = n => (n / MB).toFixed(n < 10 * MB ? 2 : 1) + ' MB';
+const MAX_READ_MB = 400;       // a browser cannot hold one text much bigger than this
+
+let rootHandle = null;         // the chosen folder, when the browser lets us save into it
+let zipFiles = null;           // download way: [{ name, text }]
+
+/* ---------- Choosing the folder ---------- */
+document.getElementById('folder').addEventListener('change', e => {
+  rootHandle = null;
+  showError('');
+  const list = Array.from(e.target.files).map(f => ({ file: f, path: sitePath(f) }));
+  run(list).catch(fail);
+});
+document.getElementById('saveBtn').addEventListener('click', saveZip);
+
+const pickBtn = document.getElementById('pickBtn');
+function showError(html) { document.getElementById('errBox').innerHTML = html ? '<div class="errbox">' + html + '</div>' : ''; }
+function fail(err) {
+  console.warn(err);
+  showError('出错 · Error: ' + escapeHtml((err && (err.name + ': ' + err.message)) || err));
+}
+function useDownloadWay(reason) {
+  document.getElementById('wayA').classList.add('off');
+  pickBtn.disabled = true;
+  showError(reason + '<br>请用<b>方式二</b> · Use la <b>opción 2</b>.');
+}
+if (!CFG) showError('没有找到 capas.js · No se encontró <b>capas.js</b> junto a este archivo. Ábralo desde la carpeta del sitio.');
+if (!window.mapshaper) showError('没有找到 lib/mapshaper/ · Falta <b>lib/mapshaper/</b>: sin ella no se puede simplificar.');
+if (!window.showDirectoryPicker || !window.isSecureContext) useDownloadWay('这个浏览器不支持方式一 · Este navegador no permite la opción 1.');
+
+pickBtn.addEventListener('click', async () => {
+  showError('');
+  try {
+    rootHandle = await window.showDirectoryPicker({ id: 'atlas', mode: 'readwrite' });
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    console.warn(e);
+    return useDownloadWay('浏览器不允许方式一 · El navegador no permitió la opción 1 (' + escapeHtml((e && (e.name + ': ' + e.message)) || e) + ').');
+  }
+  try {
+    const list = [];
+    await walk(rootHandle, '', list);
+    await run(list);
+  } catch (e) { fail(e); }
+});
+
+/* All .geojson / .json / .js files under a folder, with their path inside it */
+async function walk(dir, prefix, list) {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === 'directory') {
+      if (!name.startsWith('.') && !name.startsWith('_') && name !== 'node_modules' && name !== 'lib' && name !== 'assets')
+        await walk(handle, prefix + name + '/', list);
+    } else if (/\.(geo)?json$|\.js$/i.test(name)) {
+      list.push({ file: await handle.getFile(), path: (prefix + name).normalize('NFC') });
+    }
+  }
+}
+function sitePath(file) {
+  const parts = (file.webkitRelativePath || file.name).split('/');
+  parts.shift();                                // drop the chosen folder's own name
+  return parts.join('/').normalize('NFC');
+}
+function escapeHtml(v) {
+  return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ---------- Coordinates (same as before: UTM / Web Mercator -> lon/lat, 5 decimals) ---------- */
+const R2D = 180 / Math.PI;
+function utmToLonLat(x, y, zone, south) {
+  const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+  const e2 = f * (2 - f), ep2 = e2 / (1 - e2), e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  x -= 500000;
+  if (south) y -= 10000000;
+  const M = y / k0;
+  const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256));
+  const p1 = mu + (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32) * Math.sin(2 * mu)
+               + (21 * e1 * e1 / 16 - 55 * Math.pow(e1, 4) / 32) * Math.sin(4 * mu)
+               + (151 * Math.pow(e1, 3) / 96) * Math.sin(6 * mu) + (1097 * Math.pow(e1, 4) / 512) * Math.sin(8 * mu);
+  const s1 = Math.sin(p1), c1 = Math.cos(p1), t1 = Math.tan(p1);
+  const N1 = a / Math.sqrt(1 - e2 * s1 * s1), T1 = t1 * t1, C1 = ep2 * c1 * c1;
+  const R1 = a * (1 - e2) / Math.pow(1 - e2 * s1 * s1, 1.5), D = x / (N1 * k0);
+  const lat = p1 - (N1 * t1 / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * Math.pow(D, 4) / 24
+              + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * Math.pow(D, 6) / 720);
+  const lon = (D - (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6
+              + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * Math.pow(D, 5) / 120) / c1;
+  return [(zone - 1) * 6 - 180 + 3 + lon * R2D, lat * R2D];
+}
+function mercatorToLonLat(x, y) {
+  return [x / 6378137 * R2D, (2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2) * R2D];
+}
+function detectCrs(gj, sample) {
+  const name = String((gj.crs && gj.crs.properties && gj.crs.properties.name) || '');
+  const code = Number((name.match(/(\d{4,6})\s*$/) || [])[1]);
+  if (/CRS84/i.test(name) || code === 4326 || code === 4258 || code === 4674) return null;
+  if (code >= 32601 && code <= 32660) return { kind: 'utm', zone: code - 32600, south: false, label: 'UTM ' + (code - 32600) + 'N' };
+  if (code >= 32701 && code <= 32760) return { kind: 'utm', zone: code - 32700, south: true, label: 'UTM ' + (code - 32700) + 'S' };
+  if (code >= 31977 && code <= 31979) return { kind: 'utm', zone: code - 31960, south: true, label: 'SIRGAS UTM ' + (code - 31960) + 'S' };
+  if (code >= 24877 && code <= 24879) return { kind: 'utm', zone: code - 24860, south: true, label: 'PSAD56 UTM ' + (code - 24860) + 'S' };
+  if (code === 3857 || code === 900913 || code === 102100 || code === 102113) return { kind: 'merc', label: 'Web Mercator' };
+  if (!sample || (Math.abs(sample[0]) <= 180 && Math.abs(sample[1]) <= 90)) return null;
+  if (sample[0] > 100000 && sample[0] < 900000 && sample[1] > 7000000 && sample[1] < 10000000)
+    return { kind: 'utm', zone: 18, south: true, label: 'UTM 18S (guessed)' };
+  if (Math.abs(sample[0]) < 20037509 && Math.abs(sample[1]) < 20037509) return { kind: 'merc', label: 'Web Mercator (guessed)' };
+  throw new Error('Unknown coordinates — export it again as EPSG:4326 · Coordenadas desconocidas: exporte de nuevo en EPSG:4326');
+}
+function cleanCoords(c, conv) {
+  if (typeof c[0] === 'number') {
+    const ll = conv ? conv(c[0], c[1]) : c;
+    return [Math.round(ll[0] * 1e5) / 1e5, Math.round(ll[1] * 1e5) / 1e5];
+  }
+  const out = c.map(x => cleanCoords(x, conv));
+  if (out.length && typeof out[0][0] === 'number') {
+    const slim = out.filter((pt, i) => i === 0 || pt[0] !== out[i - 1][0] || pt[1] !== out[i - 1][1]);
+    if (slim.length >= 2) return slim;
+  }
+  return out;
+}
+function cleanGeometry(g, conv) {
+  if (!g) return g;
+  if (g.type === 'GeometryCollection') return Object.assign({}, g, { geometries: g.geometries.map(x => cleanGeometry(x, conv)) });
+  return Object.assign({}, g, { coordinates: cleanCoords(g.coordinates, conv) });
+}
+function firstCoordinate(c) {
+  while (Array.isArray(c) && Array.isArray(c[0])) c = c[0];
+  return c;
+}
+function hasShape(g) {
+  if (!g || !g.type) return false;
+  if (g.type === 'GeometryCollection') return (g.geometries || []).some(hasShape);
+  const hasNum = c => Array.isArray(c) && (typeof c[0] === 'number' ? isFinite(c[0]) : c.some(hasNum));
+  return hasNum(g.coordinates);
+}
+
+/* ---------- GeoJSON / Esri JSON ---------- */
+function asCollection(gj) {
+  if (gj && Array.isArray(gj.features) && isEsri(gj)) return esriToGeoJSON(gj);
+  if (gj && gj.type === 'FeatureCollection' && Array.isArray(gj.features)) return gj;
+  if (gj && !gj.type && Array.isArray(gj.features)) return Object.assign({ type: 'FeatureCollection' }, gj);
+  if (gj && gj.type === 'Feature') return { type: 'FeatureCollection', crs: gj.crs, features: [gj] };
+  if (gj && gj.type && gj.coordinates) return { type: 'FeatureCollection', crs: gj.crs, features: [{ type: 'Feature', properties: {}, geometry: gj }] };
+  throw new Error('Not GeoJSON or Esri JSON · No es GeoJSON ni Esri JSON');
+}
+function isEsri(gj) {
+  if (gj.geometryType || gj.spatialReference || gj.fields) return true;
+  const f = gj.features.find(x => x);
+  return !!(f && (f.attributes || (f.geometry && (f.geometry.paths || f.geometry.rings || f.geometry.x !== undefined || f.geometry.points))));
+}
+function ringArea(r) {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]);
+  return a / 2;
+}
+function esriGeometry(g) {
+  if (!g) return null;
+  if (g.x !== undefined && g.y !== undefined) return isFinite(g.x) && isFinite(g.y) ? { type: 'Point', coordinates: [g.x, g.y] } : null;
+  if (g.points) return { type: 'MultiPoint', coordinates: g.points };
+  if (g.paths) return g.paths.length === 1 ? { type: 'LineString', coordinates: g.paths[0] } : { type: 'MultiLineString', coordinates: g.paths };
+  if (g.rings) {
+    const polys = [];
+    g.rings.forEach(r => {
+      if (ringArea(r) <= 0 || !polys.length) polys.push([r]);
+      else polys[polys.length - 1].push(r);
+    });
+    return polys.length === 1 ? { type: 'Polygon', coordinates: polys[0] } : { type: 'MultiPolygon', coordinates: polys };
+  }
+  return null;
+}
+function esriToGeoJSON(gj) {
+  const sr = gj.spatialReference || (gj.features.find(f => f && f.geometry && f.geometry.spatialReference) || { geometry: {} }).geometry.spatialReference || {};
+  const wkid = sr.latestWkid || sr.wkid;
+  return {
+    type: 'FeatureCollection',
+    crs: wkid ? { type: 'name', properties: { name: 'EPSG:' + wkid } } : undefined,
+    esri: true,
+    features: gj.features.map(f => ({ type: 'Feature', properties: f.attributes || f.properties || {}, geometry: esriGeometry(f.geometry) }))
+  };
+}
+
+/* ---------- District codes (same rules as index.html) ---------- */
+function normalizeText(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function baseName(k) { return String(k).split('.').pop(); }
+function propsByBase(p) {
+  const out = {};
+  Object.keys(p || {}).forEach(k => { const b = baseName(k); if (out[b] === undefined || out[b] === null) out[b] = p[k]; });
+  return out;
+}
+function pickField(props, fields) {
+  const lower = {};
+  Object.keys(props).forEach(x => { const l = x.toLowerCase(); if (!(l in lower)) lower[l] = x; });
+  for (const f of fields) {
+    const k = props[f] !== undefined ? f : lower[f.toLowerCase()];
+    if (k !== undefined && props[k] !== undefined && props[k] !== null && String(props[k]).trim() !== '') return String(props[k]);
+  }
+  return '';
+}
+function ubigeoOf(props) {
+  const p = props || {};
+  const k = Object.keys(p).find(x => /^ubigeo$/i.test(baseName(x)));
+  let v = k ? String(p[k] ?? '').trim().replace(/\.0+$/, '').replace(/\D/g, '') : '';
+  if (!v) return null;
+  v = v.padStart(6, '0');
+  if (Number(v.slice(0, 2)) > 25) {                 // census code, not INEI (Lima 27xxxx -> 15xxxx, Callao -> 07xxxx)
+    const dep = normalizeText(pickField(propsByBase(p), ['DEPARTAMEN', 'DEPARTAMENTO', 'NOMBDEP']));
+    const prov = normalizeText(pickField(propsByBase(p), ['PROVINCIA', 'NOMBPROV']));
+    if (/callao/.test(dep) || /callao/.test(prov)) v = '07' + v.slice(2);
+    else if (/lima/.test(dep)) v = '15' + v.slice(2);
+  }
+  return v;
+}
+function districtKey(p) {
+  const q = propsByBase(p);
+  const d = pickField(q, ['DISTRITO', 'NOMBDIST', 'NOMB_DIST', 'ADM3_ES', 'NAME_3']);
+  const pr = pickField(q, ['PROVINCIA', 'NOMBPROV', 'ADM2_ES', 'NAME_2']);
+  const n = x => normalizeText(x || '').replace(/[^a-z0-9]+/g, '');
+  return d ? n(d) + '|' + n(pr) : null;
+}
+
+/* ---------- Catalog: which files, and what each one is ---------- */
+function catalogFiles() {
+  const out = new Map();                           // path -> { roles: Set, preload }
+  const add = (p, role, preload) => {
+    if (!p) return;
+    p = p.normalize('NFC');
+    const e = out.get(p) || { roles: new Set(), preload: false };
+    e.roles.add(role);
+    if (preload) e.preload = true;
+    out.set(p, e);
+  };
+  add(CFG.deptFile, 'departamentos', true);
+  Object.values(CFG.boundaryFiles || {}).forEach(p => add(p, 'límites'));
+  Object.values(CFG.points || {}).forEach(p => add(p.data, 'puntos', true));
+  (CFG.infraGroups || []).forEach(g => g.layers.forEach(l => add(l.file, 'líneas')));
+  (CFG.analysisLayers || []).forEach(l => add(l.file, 'análisis'));
+  return out;
+}
+function slug(path) {
+  return normalizeText(path).replace(/\.(geo)?json$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+function geomKind(features) {
+  const kinds = new Set();
+  features.forEach(f => {
+    const t = f.geometry && (f.geometry.type === 'GeometryCollection' ? (f.geometry.geometries[0] || {}).type : f.geometry.type);
+    if (/Point/.test(t)) kinds.add('points'); else if (/Line/.test(t)) kinds.add('lines'); else if (/Polygon/.test(t)) kinds.add('polygons');
+  });
+  return kinds.size === 1 ? [...kinds][0] : kinds.size ? 'mixed' : 'none';
+}
+function ratioFor(path, kind) {
+  const by = BUILD.simplifyByFile || {};
+  if (Object.prototype.hasOwnProperty.call(by, path)) return by[path];
+  const s = BUILD.simplify || {};
+  return kind === 'polygons' ? (s.polygons ?? 0.10) : kind === 'lines' ? (s.lines ?? null) : null;
+}
+
+/* Read a source file: parse, convert to lon/lat, round to ~1 m */
+async function readSource(item) {
+  if (item.file.size > MAX_READ_MB * MB) throw new Error('File too big / Archivo demasiado grande (' + mb(item.file.size) + ')');
+  let text = (await item.file.text()).replace(/^﻿/, '');
+  const gj = asCollection(JSON.parse(text));
+  text = null;
+  const all = gj.features.filter(f => f);
+  const withShape = all.filter(f => hasShape(f.geometry));
+  const crs = detectCrs(gj, firstCoordinate(withShape[0] && withShape[0].geometry.coordinates));
+  const conv = !crs ? null : crs.kind === 'utm' ? (x, y) => utmToLonLat(x, y, crs.zone, crs.south) : mercatorToLonLat;
+  const features = all.map(f => ({ type: 'Feature', properties: f.properties || {}, geometry: hasShape(f.geometry) ? cleanGeometry(f.geometry, conv) : null }));
+  const c = firstCoordinate(withShape[0] && features[all.indexOf(withShape[0])].geometry.coordinates);
+  if (c && (Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90)) throw new Error('Coordinates not lon/lat · Coordenadas no son lon/lat: exporte en EPSG:4326');
+  return { features, crs, esri: !!gj.esri, noShape: all.length - withShape.length };
+}
+
+/* Simplify lines / polygons with mapshaper (keeps shared borders, never drops a small district) */
+async function simplify(fc, ratio) {
+  const cmd = '-i in.json -simplify ' + (ratio * 100) + '% weighted keep-shapes -o out.json format=geojson precision=0.00001';
+  const out = await mapshaper.applyCommands(cmd, { 'in.json': fc });
+  const v = out['out.json'];
+  return JSON.parse(typeof v === 'string' ? v : new TextDecoder().decode(v));
+}
+function countVertices(features) {
+  let n = 0;
+  const walk = c => { if (typeof c[0] === 'number') n++; else c.forEach(walk); };
+  features.forEach(f => { const g = f.geometry; if (g) (g.type === 'GeometryCollection' ? g.geometries : [g]).forEach(x => x.coordinates && walk(x.coordinates)); });
+  return n;
+}
+
+/* Index of the base map (districts) for tables: code -> base code, name -> base code */
+function baseIndex(features) {
+  const byCode = new Map(), byName = new Map(), keyName = new Map();
+  let dup = 0;
+  features.forEach(f => {
+    const u = ubigeoOf(f.properties), n = districtKey(f.properties);
+    if (!u) return;
+    if (byCode.has(u)) dup++; else byCode.set(u, u);
+    if (n && !byName.has(n)) byName.set(n, u);
+    keyName.set(u, n);
+  });
+  return { byCode, byName, keyName, dup };
+}
+function matchRow(props, idx) {
+  const u = ubigeoOf(props), n = districtKey(props);
+  let k = u && idx.byCode.get(u);
+  if (k && n && idx.keyName.get(k) && idx.keyName.get(k).split('|')[0] !== n.split('|')[0]) k = null;   // same code, other district
+  return k || (n && idx.byName.get(n)) || null;
+}
+
+/* ---------- Previous build (to skip unchanged layers) ---------- */
+async function readPrevious(list) {
+  const it = list.find(x => x.path === 'data/atlas_index.js');
+  if (!it) return null;
+  const text = await it.file.text();
+  const m = text.match(/window\.ATLAS_INFO = (.*);\n/);
+  try { return m ? JSON.parse(m[1]) : null; } catch (e) { return null; }
+}
+
+/* ---------- Main ---------- */
+async function run(list) {
+  if (!CFG) throw new Error('capas.js missing');
+  const status = document.getElementById('status');
+  document.getElementById('savedBox').innerHTML = '';
+  document.getElementById('saveCard').hidden = true;
+  document.getElementById('extraCard').hidden = true;
+  zipFiles = null;
+
+  const sources = new Map();                       // path inside source/ -> item
+  list.forEach(x => { if (x.path.startsWith('source/') && /\.(geo)?json$/i.test(x.path)) sources.set(x.path.slice(7).normalize('NFC'), x); });
+  if (!sources.size) {
+    status.innerHTML = '<span class="bad">没有找到 source/ · No se encontró la carpeta <b>source/</b> con GeoJSON. ¿Eligió la carpeta del sitio?</span>';
+    return;
+  }
+  const looseKey = p => normalizeText(p).replace(/[\s_\-–—]+/g, '');
+  const findSource = p => sources.get(p) || [...sources.entries()].find(([k]) => looseKey(k) === looseKey(p))?.[1] || null;
+
+  const prev = await readPrevious(list);
+  const prevFiles = (prev && prev.files) || {};
+  const existingData = new Set(list.filter(x => x.path.startsWith('data/')).map(x => x.path));
+  const onlyChanged = document.getElementById('onlyChanged').checked;
+
+  const cat = catalogFiles();
+  const tables = BUILD.tables || {};
+  // Bases of tables first, then the rest; preload layers are always rebuilt (they are small)
+  const order = [...cat.keys()].sort((a, b) => (tables[a] ? 1 : 0) - (tables[b] ? 1 : 0));
+
+  const rows = document.getElementById('rows');
+  rows.innerHTML = '';
+  document.getElementById('foot').innerHTML = '';
+  document.getElementById('resultCard').hidden = false;
+
+  const info = { made: '', tool: TOOL_VERSION, simplify: BUILD.simplify || null, files: {}, skipped: [] };
+  const preloadParts = [];                         // inline in atlas_index.js
+  const outFiles = [];                             // [{ name, text }]
+  const rebuilt = new Set();
+  const baseIdx = {};                              // base path -> index (for tables)
+  let totSrc = 0, totOut = 0, totInitial = 0, nOk = 0, nBad = 0;
+  const warnMB = BUILD.warnMB || 10, maxMB = BUILD.maxMB || 50;
+
+  const addRow = (path, kind, n, src, out, state) => rows.insertAdjacentHTML('beforeend',
+    '<tr><td class="path">' + escapeHtml(path) + '</td><td>' + escapeHtml(kind || '') + '</td><td class="num">' + (n ?? '') +
+    '</td><td class="num">' + (src ? mb(src) : '') + '</td><td class="num">' + (out ? mb(out) : '') + '</td><td>' + state + '</td></tr>');
+
+  for (let i = 0; i < order.length; i++) {
+    const path = order[i], entry = cat.get(path), tab = tables[path];
+    const item = findSource(path);
+    status.textContent = '处理中 · Procesando ' + (i + 1) + ' / ' + order.length + ': ' + path;
+    await new Promise(r => setTimeout(r, 0));      // let the page update
+    if (!item) {
+      nBad++;
+      info.skipped.push({ path, reason: 'missing in source/' });
+      addRow(path, '', '', 0, 0, '<span class="bad">找不到 · No está en source/</span><span class="note">Revise el nombre en capas.js (mayúsculas, tildes).</span>');
+      continue;
+    }
+    const outName = 'data/' + slug(path) + '.js';
+    const old = prevFiles[path];
+    const baseChanged = tab && rebuilt.has(tab.base);
+    const same = old && old.srcBytes === item.file.size && old.srcModified === item.file.lastModified && old.tool === TOOL_VERSION &&
+                 JSON.stringify(old.simplify ?? null) === JSON.stringify(ratioFor(path, old.kind) ?? null);
+    if (onlyChanged && same && !entry.preload && !baseChanged && existingData.has(old.file)) {
+      info.files[path] = old;
+      totSrc += item.file.size; totOut += old.bytes || 0;
+      addRow(path, old.kind, old.features, item.file.size, old.bytes, '<span class="skip">没有变化 · Sin cambios (se mantiene)</span>');
+      continue;
+    }
+    try {
+      const src = await readSource(item);
+      let features = src.features, kind = geomKind(features.filter(f => f.geometry)), notes = [], obj, ratio = null;
+      const v0 = countVertices(features);
+      if (src.esri) notes.push('Esri JSON → GeoJSON');
+      if (src.crs) notes.push(src.crs.label + ' → lon/lat');
+
+      // A base map for tables: remember its codes
+      const isBase = Object.values(tables).some(t => t.base === path);
+      if (isBase) {
+        baseIdx[path] = baseIndex(features);
+        if (baseIdx[path].dup) notes.push(baseIdx[path].dup + ' UBIGEO duplicados en la base');
+      }
+
+      if (tab) {
+        // TABLE: no geometry; each row points to its district in the base map (_k = UBIGEO of the base)
+        if (!baseIdx[tab.base]) {
+          const b = findSource(tab.base);
+          if (!b) throw new Error('Base not found · No se encontró la base ' + tab.base);
+          baseIdx[tab.base] = baseIndex((await readSource(b)).features);
+        }
+        const idx = baseIdx[tab.base];
+        let matched = 0;
+        const unmatched = [];
+        const outRows = features.map(f => {
+          const k = matchRow(f.properties, idx);
+          const r = Object.assign({}, f.properties);
+          if (k) { r._k = k; matched++; }
+          else { unmatched.push(f); if (f.geometry) r._g = f.geometry; }   // keeps its own shape if it has one
+          return r;
+        });
+        obj = { type: 'AtlasTable', base: tab.base, rows: outRows };
+        kind = 'tabla';
+        notes.push(matched + ' / ' + features.length + ' unidas a la base por UBIGEO/nombre');
+        if (unmatched.length) notes.push('Sin unir: ' + unmatched.slice(0, 8).map(f => (ubigeoOf(f.properties) || '?') + ' ' + (districtKey(f.properties) || '')).join(', ') + (unmatched.length > 8 ? '…' : ''));
+      } else {
+        ratio = ratioFor(path, kind);
+        let fc = { type: 'FeatureCollection', features: features.filter(f => f.geometry) };
+        if (features.length - fc.features.length) notes.push('跳过 ' + (features.length - fc.features.length) + ' sin geometría');
+        if (ratio && ratio < 1 && (kind === 'polygons' || kind === 'lines')) {
+          fc = await simplify(fc, ratio);
+          notes.push('simplificada al ' + Math.round(ratio * 100) + ' % · vértices ' + v0.toLocaleString('es') + ' → ' + countVertices(fc.features).toLocaleString('es'));
+        }
+        obj = { type: 'FeatureCollection', features: fc.features };
+        // Statistical copy of the district map? Suggest a table
+        const bases = Object.keys(baseIdx);
+        if (!isBase && kind === 'polygons' && bases.length) {
+          const idx = baseIdx[bases[0]];
+          const hit = features.filter(f => matchRow(f.properties, idx)).length;
+          if (hit > 0.9 * features.length && features.length > 100)
+            notes.push('⚠ Parece el mismo mapa de distritos: agréguela en build.tables de capas.js para publicar solo la tabla (mucho más liviana).');
+        }
+      }
+
+      const json = JSON.stringify(obj);
+      const piece = 'window.ATLAS_DATA[' + JSON.stringify(path) + '] = ' + json + ';\n';
+      const n = tab ? obj.rows.length : obj.features.length;
+      if (piece.length > maxMB * MB) throw new Error('Pasa de ' + maxMB + ' MB (' + mb(piece.length) + '): baje el % de simplificación en capas.js (simplifyByFile) o simplifique en ArcGIS');
+      const rec = { file: entry.preload ? null : outName, kind, features: n, bytes: piece.length, srcBytes: item.file.size,
+                    srcModified: item.file.lastModified, simplify: ratio, tool: TOOL_VERSION };
+      if (tab) rec.base = tab.base;
+      info.files[path] = rec;
+      if (entry.preload) { preloadParts.push(piece); totInitial += piece.length; }
+      else outFiles.push({ name: outName, text: '/* Atlas · ' + path + ' */\nwindow.ATLAS_DATA = window.ATLAS_DATA || {};\n' + piece });
+      rebuilt.add(path);
+      totSrc += item.file.size; totOut += piece.length; nOk++;
+      const big = piece.length > warnMB * MB;
+      addRow(path, kind + (entry.preload ? ' ' : ''), n.toLocaleString('es'), item.file.size, piece.length,
+        (big ? '<span class="warn">OK · grande (> ' + warnMB + ' MB)</span>' : '<span class="ok">OK</span>') +
+        (entry.preload ? '<span class="tag">inicio</span>' : '') +
+        notes.map(x => '<span class="note">' + escapeHtml(x) + '</span>').join(''));
+    } catch (err) {
+      console.warn(path, err);
+      nBad++;
+      const reason = /string length/i.test(err.message) ? 'Demasiado grande para el navegador' : err.message;
+      info.skipped.push({ path, reason });
+      if (old && existingData.has(old.file)) info.files[path] = old;      // keep the last good version
+      addRow(path, '', '', item.file.size, 0, '<span class="bad">' + escapeHtml(reason) + '</span>' + (old ? '<span class="note">Se mantiene la versión anterior.</span>' : ''));
+    }
+  }
+
+  const made = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  info.made = made.getFullYear() + '-' + pad(made.getMonth() + 1) + '-' + pad(made.getDate()) + ' ' + pad(made.getHours()) + ':' + pad(made.getMinutes());
+  const indexText = '/* Atlas · índice de capas — make_atlas_data.html ' + info.made + ' */\n' +
+                    'window.ATLAS_INFO = ' + JSON.stringify(info) + ';\n' +
+                    'window.ATLAS_DATA = window.ATLAS_DATA || {};\n' + preloadParts.join('');
+  outFiles.push({ name: 'data/atlas_index.js', text: indexText });
+  totInitial += indexText.length - preloadParts.reduce((s, p) => s + p.length, 0);
+
+  document.getElementById('foot').innerHTML = '<tr><td>Total</td><td></td><td></td><td class="num">' + mb(totSrc) + '</td><td class="num">' + mb(totOut) +
+    '</td><td>Carga inicial (atlas_index.js): <b>' + mb(totInitial) + '</b></td></tr>';
+
+  // Notes: source files not in the catalog; data files no longer used
+  const used = new Set(Object.values(info.files).map(f => f.file).filter(Boolean).concat(['data/atlas_index.js']));
+  const stale = [...existingData].filter(p => p.endsWith('.js') && !used.has(p));
+  const notInCat = [...sources.keys()].filter(p => !cat.has(p) && ![...cat.keys()].some(k => looseKey(k) === looseKey(p)));
+  let extra = '';
+  if (notInCat.length) extra += '<p><b>En source/ pero no en capas.js</b> (no se publican). Para publicarlos, agregue un bloque en capas.js:</p><pre>' +
+    notInCat.map(p => escapeHtml(p)).join('\n') + '</pre>';
+  if (stale.length) extra += '<p><b>Archivos en data/ que ya no se usan</b> (puede borrarlos):</p><pre>' + stale.map(escapeHtml).join('\n') + '</pre>';
+  if (extra) { document.getElementById('extraBox').innerHTML = extra; document.getElementById('extraCard').hidden = false; }
+
+  status.innerHTML = '<span class="ok">完成 · Listo: ' + nOk + ' capas generadas</span>' + (nBad ? ' · <span class="bad">' + nBad + ' con error (ver tabla)</span>' : '');
+
+  if (rootHandle) {
+    try {
+      const dataDir = await rootHandle.getDirectoryHandle('data', { create: true });
+      for (const f of outFiles) {
+        const fh = await dataDir.getFileHandle(f.name.slice(5), { create: true });
+        const w = await fh.createWritable();
+        await w.write(f.text);
+        await w.close();
+      }
+      document.getElementById('savedBox').innerHTML = '<div class="saved">已保存 · Guardado en <b>' + escapeHtml(rootHandle.name) + '/data/</b>: ' +
+        outFiles.length + ' archivos (' + escapeHtml(info.made) + '). Abra index.html para revisar; luego suba los cambios a GitHub.</div>';
+      return;
+    } catch (e) {
+      console.warn('Could not save into the folder:', e);
+      showError('没能直接保存 · No se pudo guardar en la carpeta (' + escapeHtml((e && (e.name + ': ' + e.message)) || e) + '). Descargue data.zip.');
+    }
+  }
+  zipFiles = outFiles;
+  document.getElementById('saveCard').hidden = false;
+}
+
+/* ---------- data.zip (download way): plain "stored" zip, no compression library needed ---------- */
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_TABLE[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function saveZip() {
+  if (!zipFiles) return;
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  zipFiles.forEach(f => {
+    const name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+    parts.push(h, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true);
+    central.push(c, name);
+    offset += 30 + name.length + data.length;
+  });
+  const size = central.reduce((s, x) => s + x.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, zipFiles.length, true); end.setUint16(10, zipFiles.length, true);
+  end.setUint32(12, size, true); end.setUint32(16, offset, true);
+  const blob = new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'data.zip';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ---------- Password fingerprint for index.html (same SHA-256 as the page) ---------- */
+function sha256(text) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,
+    0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,
+    0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,
+    0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const b = Array.from(new TextEncoder().encode(text)), len = b.length * 8;
+  b.push(0x80);
+  while (b.length % 64 !== 56) b.push(0);
+  for (let i = 7; i >= 0; i--) b.push(i >= 4 ? 0 : (len >>> (i * 8)) & 0xff);
+  const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const r = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < b.length; o += 64) {
+    const w = new Array(64);
+    for (let i = 0; i < 16; i++) w[i] = (b[o + 4 * i] << 24) | (b[o + 4 * i + 1] << 16) | (b[o + 4 * i + 2] << 8) | b[o + 4 * i + 3];
+    for (let i = 16; i < 64; i++) {
+      const s0 = r(w[i - 15], 7) ^ r(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = r(w[i - 2], 17) ^ r(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+    }
+    let [a, bb, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & bb) ^ (a & c) ^ (bb & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+    H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+}
+document.getElementById('newPass').addEventListener('input', e => {
+  const v = e.target.value;
+  document.getElementById('newHash').textContent = v ? "const ACCESS_HASH = '" + sha256(v) + "';" : '—';
+});
+</script>
+</body>
+</html>

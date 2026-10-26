@@ -1,0 +1,5 @@
+# Originales: no se publican
+source/
+_respaldo_*/
+# Paquete antiguo (reemplazado por data/)
+atlas_data.js
