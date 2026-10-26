@@ -1,4 +1,4 @@
-# UNHCR Peru · Atlas de Protección y Servicios
+# UNHCR Peru · Atlas de Protección y Servicios 
 
 Geoportal interno de la Unidad de Gestión de Información (IM) de ACNUR Perú. Muestra puntos de servicio, infraestructura pública, límites administrativos y capas de análisis (población por nacionalidad, riesgo El Niño 2026–2027) sobre un mapa web.
 
@@ -6,6 +6,8 @@ Geoportal interno de la Unidad de Gestión de Información (IM) de ACNUR Perú. 
 - **Idiomas:** español, inglés y chino.
 - **Acceso:** pide una contraseña en cada visita.
 - **Funciona** abriendo `index.html` con doble clic (sin servidor) o publicado en GitHub Pages.
+
+
 
 ---
 
