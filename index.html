@@ -735,11 +735,19 @@ body.resizing{cursor:col-resize;user-select:none}
 /* Print preview: pages the size of the paper minus margins (--pw × --ph, set by setPrintPaper) */
 #printSheet{display:none}
 body.printing #printSheet{display:block;position:fixed;inset:0;z-index:100000;background:#e9eef2;overflow:auto;padding:0 0 24px}
-.ps-toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 20px;background:#fff;border-bottom:1px solid #d9e2e8;box-shadow:0 2px 8px rgba(22,55,74,.08);font-size:12px;color:#173b59}
+.ps-toolbar{position:sticky;top:0;z-index:2000;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 20px;background:#fff;border-bottom:1px solid #d9e2e8;box-shadow:0 2px 8px rgba(22,55,74,.08);font-size:12px;color:#173b59}
 .ps-toolbar select{font:inherit;padding:3px 6px;border:1px solid #cfd8df;border-radius:4px;background:#fff;color:inherit}
 .ps-opt,.ps-seg label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
 .ps-seg{display:inline-flex;gap:12px;padding-left:16px;border-left:1px solid #e3e9ed}
 .ps-seg label.dis{color:#a3aeb7;cursor:default}
+.ps-fields{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex-basis:100%;padding:6px 0 0 16px}
+.ps-apply{border:1px solid #0072bc;background:#fff;color:#0072bc;border-radius:4px;padding:4px 10px;font:inherit;font-weight:600;cursor:pointer}
+.ps-apply:hover{background:#e6f1f9}
+.ps-toolbar.busy .ps-apply{opacity:.5;cursor:wait}
+.ps-fields>b{font-weight:600;color:#0072bc;margin-right:2px}
+.ps-fields label{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid #cfdbe4;border-radius:12px;cursor:pointer;white-space:nowrap;background:#fff}
+.ps-fields label.on{background:#e6f1f9;border-color:#0072bc;color:#0b4f80}
+.ps-fields button{border:0;background:none;color:#0072bc;cursor:pointer;font:inherit;text-decoration:underline;padding:0 2px}
 .ps-status{color:#0072bc;font-weight:700}
 .ps-grow{flex:1}
 .ps-go,.ps-close{font:inherit;font-weight:700;border-radius:5px;padding:6px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -1047,7 +1055,7 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
         </section>
 
         <!-- Version of this page: check it to be sure the newest index.html is the one open -->
-        <div class="page-version">Atlas · v92 · 2026-10-27 · Geoportal</div>
+        <div class="page-version">Atlas · v97 · 2026-10-27 · Geoportal</div>
       </aside>
       <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
 
@@ -1127,6 +1135,12 @@ Object.entries(CFG.points || {}).forEach(([k, p]) => { pointLayers[k] = { icon: 
 /* Espacios de Protección and Oficinas ACNUR built into the page (only 10 points), by file name: they show even when
    data/atlas_index.js was made before these two layers were in capas.js. The copy in data/ (make_atlas_data.html) is used first. */
 const BUILTIN_POINTS = {"Espacios de Protección.geojson":{"type":"FeatureCollection","name":"Espacios de Protección","features":[{"type":"Feature","properties":{"OBJECTID":1,"nombre_ep":"Aguas Verdes","direccion":"Panamericana Norte 2011, Zarumilla","distrito_ciudad":"Aguas Verdes","provincia":"Zarumilla","departamento":"Tumbes","pais":"Perú","referencia":"Ex Complejo Migratorio / Frente al Centro de Salud de Aguas Verdes","latitud":-3.48578146245016,"longitud":-80.2609106176007},"geometry":{"type":"Point","coordinates":[-80.2609106,-3.4857815]}},{"type":"Feature","properties":{"OBJECTID":2,"nombre_ep":"Cercado de Lima","direccion":"Jirón Hernán Velarde n.° 148, Urb. Santa Beatriz, casa 11","distrito_ciudad":"Lima","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"Media cuadra antes de la UTP sede del Parque Hernán Velarde","latitud":-12.0652630267555,"longitud":-77.0353129353723},"geometry":{"type":"Point","coordinates":[-77.0353129,-12.065263]}},{"type":"Feature","properties":{"OBJECTID":3,"nombre_ep":"Chorrillos","direccion":"Parroquia Cristo Misionero del Padre, Calle San Rodolfo S/N, Urb. Villa Marina, Chorrillos","distrito_ciudad":"Chorrillos","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A espaldas de la Sede del Poder Judicial Villa Marina","latitud":-12.1911839229456,"longitud":-77.0104651174849},"geometry":{"type":"Point","coordinates":[-77.0104651,-12.1911839]}},{"type":"Feature","properties":{"OBJECTID":4,"nombre_ep":"Pueblo Libre","direccion":"Jr. General Clovis n.° 745, Pueblo Libre","distrito_ciudad":"Pueblo Libre","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A una cuadra del Parque El Carmen de Pueblo Libre y 2 cuadras del Mercado Bolívar","latitud":-12.0749663108551,"longitud":-77.0666506218595},"geometry":{"type":"Point","coordinates":[-77.0666506,-12.0749663]}},{"type":"Feature","properties":{"OBJECTID":5,"nombre_ep":"San Juan de Lurigancho","direccion":"Centro Pastoral San José, Calle La Coralinas Mz. L6, Lote 7, Urb. Las Flores de Lima","distrito_ciudad":"San Juan de Lurigancho","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A la altura del paradero 8 de la Av. Las Flores. Al costado del Colegio Daniel A. Robles – \"DAR\"","latitud":-12.0095169550394,"longitud":-77.0087638450383},"geometry":{"type":"Point","coordinates":[-77.0087638,-12.009517]}},{"type":"Feature","properties":{"OBJECTID":6,"nombre_ep":"San Martín de Porres","direccion":"Mz. D Lt 22 – Asociación Residencial, Av. Perú, San Martín de Porres 15109","distrito_ciudad":"San Martín de Porres","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"Frente al Parque Residencial San Francisco, a 3 cuadras del Puente Camote","latitud":-11.9883254693836,"longitud":-77.0986654672969},"geometry":{"type":"Point","coordinates":[-77.0986655,-11.9883255]}}]},"Oficinas ACNUR.geojson":{"type":"FeatureCollection","name":"Oficinas ACNUR","features":[{"type":"Feature","properties":{"OBJECTID":1,"oficina":"Oficina Nacional de ACNUR Perú","tipo":"Oficina Nacional","direccion":"Av. José Pardo 1540, Miraflores","ciudad":"Lima","latitud":-12.1185767624899,"longitud":-77.0434126198879},"geometry":{"type":"Point","coordinates":[-77.0434126,-12.1185768]}},{"type":"Feature","properties":{"OBJECTID":2,"oficina":"Unidad de Terreno de ACNUR en Lima","tipo":"Unidad de Terreno","direccion":"Jr. General Clovis 745, Pueblo Libre","ciudad":"Lima","latitud":-12.0747642674724,"longitud":-77.0666854775604},"geometry":{"type":"Point","coordinates":[-77.0666855,-12.0747643]}},{"type":"Feature","properties":{"OBJECTID":3,"oficina":"Unidad de Terreno de ACNUR en Tumbes","tipo":"Unidad de Terreno","direccion":"Jr. Simón Bolívar 155, Piso 2 (Frente a la Plaza de Armas)","ciudad":"Tumbes","latitud":-3.5669,"longitud":-80.4515},"geometry":{"type":"Point","coordinates":[-80.4515,-3.5669]}},{"type":"Feature","properties":{"OBJECTID":4,"oficina":"Unidad de Terreno de ACNUR en Tacna","tipo":"Unidad de Terreno","direccion":"Calle Los Nardos No. 51, Urb. Pescasseroli (Alt. Cuadra 17 de la Av. Bolognesi)","ciudad":"Tacna","latitud":-18.0025709711335,"longitud":-70.2367022321213},"geometry":{"type":"Point","coordinates":[-70.2367022,-18.002571]}}]}};
+/* The two ArcGIS Pro icons built into the page (96 px), used when the .png cannot be found
+   (page opened from another folder, folder renamed …): the points never fall back to plain dots */
+const BUILTIN_ICONS = {
+  ProtectionSpace: 'data:image/png;base64,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',
+  UNHCR: 'data:image/png;base64,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'
+};
 /* Icon size on the map, in pixels, by zoom level: small on the whole of Peru (as in the UNHCR map templates),
    a bit bigger when zoomed in to a city. [from zoom, size]: the last row whose zoom is reached is used. */
 const POINT_ICON_SIZES = [[0, 12], [7, 14], [9, 18], [11, 22], [13, 26]];
@@ -1310,15 +1324,16 @@ const FIELD_LABELS = {
   pob_total:        { es: 'Población total según CENEPRED (referencial)', en: 'Total population according to CENEPRED (reference only)', zh: '总人口（CENEPRED，仅供参考）', pop: true },
   // Foreign population by nationality (administrative boundaries file)
   total_extranjeros: { es: 'Total de población extranjera', en: 'Total foreign population', zh: '外国人口总数', also: ['total_extr'] },
-  Venezuela:   { es: 'Población venezolana', en: 'Venezuelan population', zh: '委内瑞拉人口' },
-  Colombia:    { es: 'Población colombiana', en: 'Colombian population', zh: '哥伦比亚人口' },
-  Ecuador:     { es: 'Población ecuatoriana', en: 'Ecuadorian population', zh: '厄瓜多尔人口' },
-  Bolivia:     { es: 'Población boliviana', en: 'Bolivian population', zh: '玻利维亚人口' },
-  Cuba:        { es: 'Población cubana', en: 'Cuban population', zh: '古巴人口' },
-  Haiti:       { es: 'Población haitiana', en: 'Haitian population', zh: '海地人口' },
-  Otros_pais:  { es: 'Población de otros países', en: 'Population from other countries', zh: '其他国家人口', also: ['Otros_paises'] },
+  // Census by place of birth: people living in Peru who were born in that country
+  Venezuela:   { es: 'Población residente en el Perú nacida en Venezuela', en: 'Population living in Peru born in Venezuela', zh: '在秘鲁居住、出生于委内瑞拉的人口' },
+  Colombia:    { es: 'Población residente en el Perú nacida en Colombia', en: 'Population living in Peru born in Colombia', zh: '在秘鲁居住、出生于哥伦比亚的人口' },
+  Ecuador:     { es: 'Población residente en el Perú nacida en Ecuador', en: 'Population living in Peru born in Ecuador', zh: '在秘鲁居住、出生于厄瓜多尔的人口' },
+  Bolivia:     { es: 'Población residente en el Perú nacida en Bolivia', en: 'Population living in Peru born in Bolivia', zh: '在秘鲁居住、出生于玻利维亚的人口' },
+  Cuba:        { es: 'Población residente en el Perú nacida en Cuba', en: 'Population living in Peru born in Cuba', zh: '在秘鲁居住、出生于古巴的人口' },
+  Haiti:       { es: 'Población residente en el Perú nacida en Haití', en: 'Population living in Peru born in Haiti', zh: '在秘鲁居住、出生于海地的人口' },
+  Otros_pais:  { es: 'Población residente en el Perú nacida en otros países', en: 'Population living in Peru born in other countries', zh: '在秘鲁居住、出生于其他国家的人口', also: ['Otros_paises'] },
   Extranjeros: { es: 'Población extranjera (todas las nacionalidades)', en: 'Foreign population (all nationalities)', zh: '外国人口（全部国籍）', pop: true },
-  Peru:        { es: 'Población peruana', en: 'Peruvian population', zh: '秘鲁人口' },
+  Peru:        { es: 'Población nacida en el Perú', en: 'Population born in Peru', zh: '出生于秘鲁的人口' },
   Total:       { es: 'Población total', en: 'Total population', zh: '总人口' },
   Lima_Metro:  { es: 'Lima Metropolitana', en: 'Metropolitan Lima', zh: '属于利马都会区', flag: true, menu: false, also: ['Lima_Metropolitana'] },
   clasificacion_lima:       { es: 'Clasificación (Lima Metropolitana / resto del país)', en: 'Classification (Metropolitan Lima / rest of the country)', zh: '分类（利马都会区 / 其他地区）', also: ['clasificac'] },
@@ -1518,7 +1533,7 @@ const I18N = {
     badgePublic: 'PUBLIC VERSION',
     badgeInternal: 'INTERNAL USE',
     print: 'Print',
-    psPaper: 'Paper', psLandscape: 'Landscape', psPortrait: 'Portrait', psNames: 'Show area names', psCurrent: 'Current map', psBatch: 'Batch: one page per indicator / layer ({n} pages)',
+    psPaper: 'Paper', psLandscape: 'Landscape', psPortrait: 'Portrait', psNames: 'Show area names', psCurrent: 'Current map', psBatch: 'Batch: one page per indicator / layer ({n} pages)', psBatchField: 'Batch: one page per field / country ({n} pages)', psFieldsL: 'Pages:', psAllF: 'All', psNoneF: 'None', psApplyView: 'Apply page 1 view to all pages', psZoomHint: 'zoom or move the map on page 1: every page follows after 1 second', psBatchFieldNone: 'Turn on a statistical layer coloured by a number (e.g. population by nationality) to print one page per field.',
     psBatchNone: 'Calculate several indicators or tick several analysis layers to print them in a batch.', psBusyN: 'Making page {i} of {n}…', psReady: '{n} pages ready', psNamesN: '{n} area names on the map',
     psPrint: 'Print', psClose: 'Close', psTip: 'In the print window choose “Save as PDF” (the paper is then set for you) or the same paper and orientation; another paper also works, the page is scaled to it. Margins “None” or “Default”, scale “Default”, untick “Headers and footers” and tick “Background graphics”.', printSrcL: 'Source', printSrcV: 'UNHCR Peru – Protection and Services Atlas', printBaseL: 'Basemap', printDateL: 'Map date', printLegend: 'Legend', printSelected: 'Selected areas', printSelectedN: '{n} selected areas (outline)',
     printDisclaimer: 'The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.',
@@ -1690,7 +1705,7 @@ const I18N = {
     badgePublic: 'VERSIÓN PÚBLICA',
     badgeInternal: 'USO INTERNO',
     print: 'Imprimir',
-    psPaper: 'Papel', psLandscape: 'Horizontal', psPortrait: 'Vertical', psNames: 'Mostrar nombres de áreas', psCurrent: 'Mapa actual', psBatch: 'Lote: una página por indicador / capa ({n} páginas)',
+    psPaper: 'Papel', psLandscape: 'Horizontal', psPortrait: 'Vertical', psNames: 'Mostrar nombres de áreas', psCurrent: 'Mapa actual', psBatch: 'Lote: una página por indicador / capa ({n} páginas)', psBatchField: 'Lote: una página por campo / país ({n} páginas)', psFieldsL: 'Páginas:', psAllF: 'Todos', psNoneF: 'Ninguno', psApplyView: 'Aplicar la vista de la página 1 a todas', psZoomHint: 'acerque o mueva el mapa de la página 1: todas las páginas lo siguen tras 1 segundo', psBatchFieldNone: 'Active una capa estadística coloreada por un número (p. ej. población por nacionalidad) para imprimir una página por campo.',
     psBatchNone: 'Calcule varios indicadores o marque varias capas de análisis para imprimirlos en lote.', psBusyN: 'Preparando página {i} de {n}…', psReady: '{n} páginas listas', psNamesN: '{n} nombres de áreas en el mapa',
     psPrint: 'Imprimir', psClose: 'Cerrar', psTip: 'En la ventana de impresión elija “Guardar como PDF” (el papel se elige solo) o el mismo papel y orientación; otro papel también sirve, la página se ajusta. Márgenes “Ninguno” o “Predeterminados”, escala “Predeterminada”, desmarque “Encabezados y pies de página” y marque “Gráficos de fondo”.', printSrcL: 'Fuente', printSrcV: 'ACNUR Perú – Atlas de Protección y Servicios', printBaseL: 'Mapa base', printDateL: 'Fecha del mapa', printLegend: 'Leyenda', printSelected: 'Áreas seleccionadas', printSelectedN: '{n} áreas seleccionadas (contorno)',
     printDisclaimer: 'Los límites y los nombres que figuran en este mapa y las denominaciones empleadas en él no implican su apoyo o aceptación oficial por las Naciones Unidas.',
@@ -1862,7 +1877,7 @@ const I18N = {
     badgePublic: '公开版',
     badgeInternal: '内部使用',
     print: '打印',
-    psPaper: '纸张', psLandscape: '横向', psPortrait: '纵向', psNames: '显示行政区名称', psCurrent: '当前地图', psBatch: '批量：每个指标 / 图层各一页（{n} 页）',
+    psPaper: '纸张', psLandscape: '横向', psPortrait: '纵向', psNames: '显示行政区名称', psCurrent: '当前地图', psBatch: '批量：每个指标 / 图层各一页（{n} 页）', psBatchField: '批量：每个字段 / 国家各一页（{n} 页）', psFieldsL: '要打印的页：', psAllF: '全选', psNoneF: '全不选', psApplyView: '将第 1 页视图应用到所有页', psZoomHint: '在第 1 页放大或移动地图，停 1 秒后所有页自动跟着变', psBatchFieldNone: '先打开一个按数值着色的统计图层（如按国籍人口分布），才能按字段每页打印。',
     psBatchNone: '计算多个指标或勾选多个分析图层后，才能批量打印。', psBusyN: '正在生成第 {i} / {n} 页…', psReady: '已生成 {n} 页', psNamesN: '地图上标注了 {n} 个行政区名称',
     psPrint: '打印', psClose: '关闭', psTip: '打印窗口里选「另存为 PDF」（纸张会自动设好），或选相同的纸张和方向；选了别的纸张也可以，页面会自动缩放铺满。边距选“无”或“默认”，缩放选“默认”，取消勾选“页眉和页脚”，勾选“背景图形”。', printSrcL: '数据来源', printSrcV: '联合国难民署秘鲁办事处 · 保护与服务地图集', printBaseL: '底图', printDateL: '制图日期', printLegend: '图例', printSelected: '所选区域', printSelectedN: '{n} 个所选区域（轮廓）',
     printDisclaimer: '本地图所示边界和名称以及所用称谓并不意味着联合国正式认可或接受。',
@@ -2280,7 +2295,7 @@ const ICON_PRINT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
    The map element is moved into the preview while it is open and put back afterwards. */
 const PS_PAPERS = { a4: [297, 210], letter: [279.4, 215.9], a3: [420, 297] };   // landscape, mm (portrait = turned)
 const PS_MARGIN = 0;        // no white edge: the blue bands go to the edge of the paper, as in the templates
-const PS_OPT = { paper: 'a4', orient: 'landscape', names: true, batch: false, lang: 'en', inset: true, top: true, title: '', sub: '' };   // title / sub: typed in the toolbar, for every page
+const PS_OPT = { paper: 'a4', orient: 'landscape', names: true, batch: false, by: 'layer', fields: null, fieldsFor: '', lang: 'en', inset: true, top: true, title: '', sub: '' };   // by: 'layer' | 'field' (batch); fields: fields chosen for 'field' (null = default)   // title / sub: typed in the toolbar, for every page
 const PS_EDIT = {};         // texts typed on the pages: { page key: { title, sub } }, { meta: { author, contact } } (kept while this page is open)
 const PS_SA = [[-56.5, -82.5], [13.5, -34]];   // South America: what the overview map shows
 let psInsets = [];          // overview maps of the pages (small Leaflet maps)
@@ -2288,12 +2303,28 @@ let psLiveInset = null;     // the one that follows the live map (single page)
 let printSaved = null;      // map state while the preview is open
 let psLabels = null;        // area names on the map (only in the preview)
 let psRun = 0;              // build number: a newer build stops an older one
+let psBatchView = null;     // batch: view of page 1 (centre, zoom) given to every page; null = the map as it was
+let psBatchLive = false;    // batch finished: page 1 has the live map, a zoom / move there is given to every page
+let psViewTimer = null;
+/* Batch: the user zoomed or moved page 1 → 1 s after the last move every page gets the same view (made again) */
+function psBatchMoved() {
+  if (!printSaved || !PS_OPT.batch || !psBatchLive || psPrinting) return;
+  clearTimeout(psViewTimer);
+  psViewTimer = setTimeout(() => {
+    if (!printSaved || !PS_OPT.batch || !psBatchLive || psDrag || document.getElementById('psToolbar').classList.contains('busy')) return;
+    const c = map.getCenter(), z = map.getZoom();
+    if (psBatchView && psBatchView.z === z && psBatchView.c.equals(c, 1e-7)) return;   // same view: nothing to do
+    psBatchView = { c: c, z: z };
+    buildPrintPages();
+  }, 1000);
+}
 
 function printPage() {
   const mapPage = document.getElementById('mapPage');
   if (!map || !mapPage || !mapPage.classList.contains('active')) { window.print(); return; }   // landing page: as before
   PS_OPT.paper = 'a4';                        // each time the preview opens: A4 (orientation as chosen last), with area names
   PS_OPT.names = true;
+  psBatchView = null;
   try {
     enterPrintSheet(false);
     buildPrintPages();
@@ -2316,7 +2347,8 @@ function enterPrintSheet(viaKeys) {
     state: {                                  // what the batch pages change, to put it back
       mapCard: SEL.mapCard, mapOff: SEL.mapOff,
       fields: Object.keys(CALC).map(k => [k, CALC[k] && CALC[k].mapField]),
-      anOn: psAnalysisOn().filter(st => map.hasLayer(st.layer))
+      anOn: psAnalysisOn().filter(st => map.hasLayer(st.layer)),
+      anFields: ANALYSIS_ROWS.filter(r => r.on).map(r => { const v = rowVersion(r), st = analysisState[v.id]; return st && st.layer ? [v, st.field, st.hl] : null; }).filter(Boolean)   // batch per field changes the coloured field
     }
   };
   map.options.zoomSnap = 0.1;                 // fit the same area into the frame without jumping a whole zoom level
@@ -2331,6 +2363,7 @@ function enterPrintSheet(viaKeys) {
   }).filter(Boolean);
   document.body.classList.add('printing');
   map.on('moveend', psLiveFollow);           // single page: the overview map follows when the map is moved
+  map.on('moveend', psBatchMoved);           // batch: page 1 zoomed / moved → every page
   setPrintPaper();
   renderPrintToolbar();
   if (viaKeys) psSinglePage();                // Ctrl+P: no time to wait, one page with the map as it is
@@ -2338,10 +2371,14 @@ function enterPrintSheet(viaKeys) {
 function leavePrintSheet() {
   if (!printSaved) return;
   psRun++;                                    // stop a batch still being made
+  psBatchView = null;
   psRestoreState();
   psRemoveLabels();
   psClearInsets();
   map.off('moveend', psLiveFollow);
+  map.off('moveend', psBatchMoved);
+  clearTimeout(psViewTimer);
+  psBatchLive = false;
   const mapEl = printSaved.mapEl;             // kept here: rebuilding the pages takes it out of the page
   printSaved.parent.insertBefore(mapEl, printSaved.next);
   document.body.classList.remove('printing');
@@ -2398,7 +2435,7 @@ function psK() {                              // size factor of the paper: 1 = A
 
 /* Toolbar of the preview (not printed) */
 function renderPrintToolbar() {
-  const n = psBatchSpecs().length;
+  const n = psBatchSpecs('layer').length, nf = psBatchSpecs('field').length, byField = PS_OPT.batch && PS_OPT.by === 'field';
   const papers = [['a4', 'A4'], ['letter', 'Letter'], ['a3', 'A3']];
   const txt = (k, lbl) => '<label class="ps-opt ps-txt">' + escapeHtml(t(lbl)) + ' <input type="text" data-ps="' + k + '" value="' + escapeHtml(PS_OPT[k] || '') +
                           '" placeholder="' + escapeHtml(t('psAutoPh')) + '"></label>';
@@ -2417,12 +2454,19 @@ function renderPrintToolbar() {
     '<span class="ps-seg">' +
       '<label><input type="radio" name="psScope" value="cur"' + (PS_OPT.batch ? '' : ' checked') + '> ' + escapeHtml(t('psCurrent')) + '</label>' +
       '<label' + (n < 2 ? ' class="dis" title="' + escapeHtml(t('psBatchNone')) + '"' : '') + '><input type="radio" name="psScope" value="batch"' +
-        (PS_OPT.batch && n >= 2 ? ' checked' : '') + (n < 2 ? ' disabled' : '') + '> ' + escapeHtml(t('psBatch', { n: n })) + '</label>' +
+        (PS_OPT.batch && !byField && n >= 2 ? ' checked' : '') + (n < 2 ? ' disabled' : '') + '> ' + escapeHtml(t('psBatch', { n: n })) + '</label>' +
+      '<label' + (!psFieldTarget() ? ' class="dis" title="' + escapeHtml(t('psBatchFieldNone')) + '"' : '') + '><input type="radio" name="psScope" value="fields"' +
+        (byField ? ' checked' : '') + (!psFieldTarget() ? ' disabled' : '') + '> ' + escapeHtml(t('psBatchField', { n: nf })) + '</label>' +
     '</span>' +
+    (PS_OPT.batch ? '<button type="button" class="ps-apply" data-ps="applyview">' + escapeHtml(t('psApplyView')) + '</button>' : '') +
     '<span class="ps-status" id="psStatus"></span><span class="ps-grow"></span>' +
     '<button type="button" class="ps-go" data-ps="print">' + ICON_PRINT + escapeHtml(t('psPrint')) + '</button>' +
     '<button type="button" class="ps-close" data-ps="close">' + escapeHtml(t('psClose')) + '</button>' +
-    '<span class="ps-help" title="' + escapeHtml(t('psEditTip') + '\n\n' + t('psLblTip') + '\n\n' + t('psTip')) + '">?</span>';
+    '<span class="ps-help" title="' + escapeHtml(t('psEditTip') + '\n\n' + t('psLblTip') + '\n\n' + t('psTip')) + '">?</span>' +
+    (byField && psFieldTarget() ? '<div class="ps-fields"><b>' + escapeHtml(t('psFieldsL')) + '</b>' + psFieldList().map(k => {   // one chip per field: ticked = one page
+        const on = psFieldsOn().includes(k);
+        return '<label' + (on ? ' class="on"' : '') + '><input type="checkbox" data-psfield="' + escapeHtml(k) + '"' + (on ? ' checked' : '') + '> ' + escapeHtml(fieldLabel(k)) + '</label>';
+      }).join('') + '<button type="button" data-ps="fall">' + escapeHtml(t('psAllF')) + '</button><button type="button" data-ps="fnone">' + escapeHtml(t('psNoneF')) + '</button></div>' : '');
   // Vertical tool bar for the moved names (right side of the preview)
   const svg = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
   const tb = (k, tip, icon, off) => '<button type="button" data-ps="' + k + '" title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"' + (off ? ' disabled' : '') + '>' + svg(icon) + '</button>';
@@ -2442,7 +2486,7 @@ document.addEventListener('change', e => {
   if (!e.target.closest || !e.target.closest('#psToolbar')) return;
   const k = e.target.dataset.ps;
   if (k === 'paper') { PS_OPT.paper = e.target.value; buildPrintPages(); }
-  else if (k === 'orient') { PS_OPT.orient = e.target.value; buildPrintPages(); }
+  else if (k === 'orient') { PS_OPT.orient = e.target.value; psBatchView = null; buildPrintPages(); }   // other shape: back to the whole map
   else if (k === 'lang') { PS_OPT.lang = e.target.value; buildPrintPages(); }
   else if (k === 'basemap') {                // same basemap as the map page (the menu in the top bar follows)
     switchBasemap(e.target.value);
@@ -2454,8 +2498,18 @@ document.addEventListener('change', e => {
   else if (k === 'names') {
     PS_OPT.names = e.target.checked;
     if (PS_OPT.batch) buildPrintPages(); else { psAddLabels(); psStatus(psLabelInfo(), false); }
-  } else if (e.target.name === 'psScope') { PS_OPT.batch = e.target.value === 'batch'; buildPrintPages(); }
+  } else if (e.target.name === 'psScope') {
+    PS_OPT.batch = e.target.value !== 'cur';
+    PS_OPT.by = e.target.value === 'fields' ? 'field' : 'layer';
+    buildPrintPages();
+  } else if (e.target.dataset.psfield !== undefined) {   // field chip ticked / unticked: pages made again shortly after the last click
+    PS_OPT.fields = [...document.querySelectorAll('#psToolbar [data-psfield]')].filter(x => x.checked).map(x => x.dataset.psfield);
+    e.target.closest('label').classList.toggle('on', e.target.checked);
+    psFieldsLater();
+  }
 });
+let psFieldsTimer = null;
+function psFieldsLater() { clearTimeout(psFieldsTimer); psFieldsTimer = setTimeout(buildPrintPages, 700); }
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('#psToolbar button[data-ps], #psTools button[data-ps]');
   if (!b) return;
@@ -2464,6 +2518,15 @@ document.addEventListener('click', e => {
   else if (b.dataset.ps === 'lblundo') psUndoLabel(false);
   else if (b.dataset.ps === 'lblredo') psUndoLabel(true);
   else if (b.dataset.ps === 'lblsave') psSaveLabels();
+  else if (b.dataset.ps === 'applyview' && !document.getElementById('psToolbar').classList.contains('busy')) {
+    psBatchView = { c: map.getCenter(), z: map.getZoom() };   // the map of page 1 as zoomed / moved now
+    buildPrintPages();
+  }
+  else if (b.dataset.ps === 'fall' || b.dataset.ps === 'fnone') {
+    PS_OPT.fields = b.dataset.ps === 'fall' ? psFieldList() : [];
+    document.querySelectorAll('#psToolbar [data-psfield]').forEach(x => { x.checked = b.dataset.ps === 'fall'; x.closest('label').classList.toggle('on', x.checked); });
+    psFieldsLater();
+  }
   else if (b.dataset.ps === 'print' && !document.getElementById('psToolbar').classList.contains('busy')) { psSetDocTitle(); setTimeout(() => window.print(), 50); }
 });
 
@@ -2484,17 +2547,21 @@ function psSinglePage() {
 }
 function psFit() {
   map.invalidateSize({ animate: false });
-  map.fitBounds(printSaved.bounds, { animate: false });
+  if (PS_OPT.batch && psBatchView) map.setView(psBatchView.c, psBatchView.z, { animate: false });   // batch: the view chosen on page 1
+  else map.fitBounds(printSaved.bounds, { animate: false });
 }
 function buildPrintPages() { return buildPrintPagesRaw().catch(psFail); }   // every caller: errors are shown, not lost
 async function buildPrintPagesRaw() {
   if (!printSaved) return;
   const run = ++psRun;
+  psBatchLive = false;                        // moves made while the pages are made are not the user's
+  clearTimeout(psViewTimer);
   setPrintPaper();
   psRestoreState();
-  const specs = PS_OPT.batch ? psBatchSpecs() : [];
-  if (specs.length < 2) {                     // current map: one page
-    PS_OPT.batch = false;
+  const byField = PS_OPT.batch && PS_OPT.by === 'field' && !!psFieldTarget();
+  const specs = PS_OPT.batch ? psBatchSpecs(byField ? 'field' : 'layer') : [];
+  if (specs.length < (byField ? 1 : 2)) {     // current map: one page (batch per field with no field ticked: the toolbar keeps the choice)
+    if (!byField) PS_OPT.batch = false;
     renderPrintToolbar();
     psStatus('', true);
     psSinglePage();
@@ -2508,15 +2575,39 @@ async function buildPrintPagesRaw() {
   psClearInsets();
   box.innerHTML = psL(() => specs.map(psPageHtml).join(''));
   psFitAll();
-  const frames = box.querySelectorAll('.ps-map');
+  const frames = [...box.querySelectorAll('.ps-map')];
   stage.style.width = frames[0].clientWidth / psK() + 'px';    // map drawn at A4 size, the picture is enlarged on the page
   stage.style.height = frames[0].clientHeight / psK() + 'px';
   stage.appendChild(mapEl);
   psFit();
-  for (let i = 0; i < specs.length; i++) {
+  const order = specs.map((_, i) => i).slice(1).concat(0);   // page 1 last: it keeps the live map
+  for (const i of order) {
     if (run !== psRun) return;
-    psStatus(t('psBusyN', { i: i + 1, n: specs.length }), true);
-    psApply(specs[i]);
+    psStatus(t('psBusyN', { i: order.indexOf(i) + 1, n: specs.length }), true);
+    await psApply(specs[i]);
+    if (run !== psRun) return;
+    // The page is written again now that its field is on the map: title, ranking table and legend of THIS field
+    const tmp = document.createElement('div');
+    tmp.innerHTML = psL(() => psPageHtml(specs[i]));
+    const page = tmp.firstElementChild;
+    box.children[i].replaceWith(page);
+    psFitPage(page);
+    frames[i] = page.querySelector('.ps-map');
+    const sw = frames[i].clientWidth / psK() + 'px', sh = frames[i].clientHeight / psK() + 'px';
+    if (i === 0) {                            // page 1: the live map, can be zoomed and moved (then "Apply page 1 view to all pages")
+      frames[0].appendChild(mapEl);
+      psFit();
+      psLabelFrame = frames[0];
+      psAddLabels(specs[0]);
+      psLabelFrame = null;
+      await psSettle();
+      if (run !== psRun) return;
+      psInset(frames[0], map.getBounds(), true);
+      psLiveFrame = frames[0];                // scale bar and overview map follow when it is zoomed
+      psL(() => psScale(frames[0]));
+      continue;
+    }
+    if (stage.style.width !== sw || stage.style.height !== sh) { stage.style.width = sw; stage.style.height = sh; psFit(); }   // a 2-line title makes the frame smaller
     psLabelFrame = frames[i];                 // names keep clear of this page's legend and table
     psAddLabels(specs[i]);
     psLabelFrame = null;
@@ -2526,10 +2617,9 @@ async function buildPrintPagesRaw() {
     psL(() => psScale(frames[i]));            // same size and view as the stage map: same scale
     psInset(frames[i], map.getBounds(), false);
   }
-  psRestoreState();
-  psRemoveLabels();
-  psFitAll();
-  psStatus(t('psReady', { n: specs.length }), false);
+  psFitAll();                                 // page 1 keeps its field and names on the live map (put back when the preview closes)
+  psStatus(t('psReady', { n: specs.length }) + ' · ' + t('psZoomHint'), false);
+  setTimeout(() => { if (run === psRun) psBatchLive = true; }, 400);   // from now on a zoom / move of page 1 is given to every page
 }
 // Wait for the map to draw and the basemap tiles to arrive (at most ~3 s)
 async function psSettle() {
@@ -2567,8 +2657,30 @@ function psSnapshot(mapEl) {
 function psAnalysisOn() {
   return ANALYSIS_ROWS.filter(r => r.on).map(r => analysisState[rowVersion(r).id]).filter(st => st && st.layer);
 }
-function psBatchSpecs() {
+/* Batch per field: the statistical layer shown, coloured by a number (e.g. population by nationality), one page per ticked field */
+function psFieldTarget() {
+  for (const r of ANALYSIS_ROWS.filter(r => r.on)) {
+    const st = analysisState[rowVersion(r).id];
+    if (st && st.layer && st.info && st.info.kind !== 'points' && st.info.numeric.length > 1) return { row: r, st: st };
+  }
+  return null;
+}
+function psFieldList() {                      // the number fields of that layer (codes and ids left out)
+  const tg = psFieldTarget();
+  return tg ? tg.st.info.numeric.filter(k => !/^(ubigeo|objectid|fid|id|cod|shape_|area$|perim)/i.test(baseName(k))) : [];
+}
+function psFieldsOn() {                       // ticked fields; first time: every field except totals
+  const tg = psFieldTarget(), all = psFieldList();
+  if (!tg) return [];
+  if (PS_OPT.fieldsFor !== tg.row.id) { PS_OPT.fieldsFor = tg.row.id; PS_OPT.fields = null; }
+  return PS_OPT.fields ? all.filter(k => PS_OPT.fields.includes(k)) : all.filter(k => !/total/i.test(baseName(k)));
+}
+function psBatchSpecs(by) {
   const specs = [];
+  if ((by || PS_OPT.by) === 'field') {
+    const tg = psFieldTarget();
+    return tg ? psFieldsOn().map(f => ({ kind: 'analysis', row: tg.row, field: f })) : [];
+  }
   if (SEL.items && SEL.items.length && selStep() === 4 && SEL.view !== 'compare') {
     calcLayers().forEach(l => {
       const c = CALC[l.id];
@@ -2584,9 +2696,14 @@ function psBatchSpecs() {
   });
   return specs;
 }
-function psApply(spec) {
+async function psApply(spec) {
   printSaved.dirty = true;
   const keep = spec.kind === 'analysis' ? analysisState[rowVersion(spec.row).id] : null;
+  if (keep && spec.field && keep.field !== spec.field) {   // batch per field: colour the layer by this field
+    keep.field = spec.field;
+    keep.hl = null;
+    await drawAnalysis(rowVersion(spec.row));
+  }
   psAnalysisOn().forEach(st => {
     if (st === keep) { if (!map.hasLayer(st.layer)) st.layer.addTo(map); }
     else if (map.hasLayer(st.layer)) map.removeLayer(st.layer);
@@ -2601,6 +2718,10 @@ function psRestoreState() {
   const s = printSaved.state;
   SEL.mapCard = s.mapCard; SEL.mapOff = s.mapOff;
   s.fields.forEach(([k, f]) => { if (CALC[k]) CALC[k].mapField = f; });
+  (s.anFields || []).forEach(([v, f, hl]) => {  // the field coloured before the batch per field
+    const st = analysisState[v.id];
+    if (st && st.field !== f) { st.field = f; st.hl = hl; drawAnalysis(v); }
+  });
   psAnalysisOn().forEach(st => {
     const on = s.anOn.includes(st);
     if (on && !map.hasLayer(st.layer)) st.layer.addTo(map);
@@ -2805,6 +2926,12 @@ function psAddLabels(spec) {
   let src = take(fltLayer);                  // filter result first: its areas are the subject of the page
   if (!src.length) src = take(selHitLayer);
   if (!src.length) src = take(selLayer);
+  let nameOf = null;                         // statistical layer coloured by a number: its areas, named as in its ranking table
+  if (!src.length) {
+    const an = spec && spec.kind === 'analysis' ? analysisState[rowVersion(spec.row).id]
+             : psAnalysisOn().find(st => map.hasLayer(st.layer) && st.result && st.result.kind === 'numeric');
+    if (an && an.result && an.result.kind === 'numeric') { src = take(an.areas || an.layer); nameOf = an.result.name; }
+  }
   if (!src.length) src = take(childLayer);
   if (!src.length) src = take(boundaryLayer);
   const rank = psRankMap(spec);                  // name -> 1, 2, 3 … (same order as the ranking table)
@@ -2813,7 +2940,7 @@ function psAddLabels(spec) {
   const items = src.map(l => {
     const b = l.getBounds(), a = map.latLngToContainerPoint(b.getNorthWest()), c = map.latLngToContainerPoint(b.getSouthEast());
     const f = l.feature;
-    const name = String(f._name || featName(f) || '').trim();
+    const name = String((nameOf && nameOf(f)) || f._name || featName(f) || '').trim();
     return { f: f, name: name, rk: rank.get(featName(f)) || rank.get(name) || 0, w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) };
   }).filter(o => o.name && o.name !== '—' && (o.rk || o.w >= 22 || o.h >= 22))
     .sort((x, y) => ((x.rk || 1e9) - (y.rk || 1e9)) || (y.w * y.h - x.w * x.h));   // ranked areas first, so they are never left out
@@ -2892,7 +3019,7 @@ function psClearInsets() {
 /* Texts the user can type over. Order: text typed on that page > Title / Subtitle box of the toolbar (every page) > automatic.
    The automatic text stays in data-auto: an emptied box gets it back. Author / contact (footer) are shared by all pages. */
 function psSpecKey(spec) {
-  return spec.kind === 'calc' ? 'calc|' + spec.id + '|' + spec.field : spec.kind === 'analysis' ? 'an|' + spec.row.id : 'current';
+  return spec.kind === 'calc' ? 'calc|' + spec.id + '|' + spec.field : spec.kind === 'analysis' ? 'an|' + spec.row.id + (spec.field ? '|' + spec.field : '') : 'current';
 }
 function psGlobalText(field) { return field === 'title' || field === 'sub' ? PS_OPT[field] || '' : ''; }
 function psEditable(key, field, auto, cls, tag) {
@@ -3158,7 +3285,8 @@ function psLegend(spec) {
   rows3.forEach(r => {
     const v = rowVersion(r), st = analysisState[v.id] || {};
     block(st.field ? fieldLabel(st.field) : analysisName(v), '', psAnalysisRows(st, v, row, sw));
-    if (st.result && st.result.circ) block('', '', '<div class="ps-circ">' + circleLegendHtml(st.result.circ) + '</div>');   // proportional circles: sizes
+    const circ = st.result && st.result.circ && (circleLegendHtml(st.result.circ).match(/<svg[\s\S]*<\/svg>/) || [])[0];   // proportional circles: their own block with the sizes
+    if (circ) block(fieldLabel(st.result.circ.field), t('circHint'), '<div class="ps-circ">' + circ + '</div>');
   });
   // 3. Infrastructure lines that are ticked
   let inf = '';
@@ -4083,10 +4211,11 @@ function drawAnalysis(layer) {
 const CIRCLE_MAX_PX = 28;
 let anCircleRenderer = null;
 function circleRadius(v, max) { return Math.max(1.5, CIRCLE_MAX_PX * Math.sqrt(v / max)); }
-const CIRCLE_COLOR = '#e8772e';               // orange: stands out on the blue map colours
+const CIRCLE_COLOR = '#ffc740';               // UNHCR yellow (yellow02): the opposite of the blue map colours, stands out most
+const CIRCLE_LINE = '#b98405';                // UNHCR dark yellow (yellow04): outline of the legend circles, visible on white
 function circleStyle(on, r) {
   const w = r !== undefined && r < 3 ? 0 : 1.2;  // tiny circles without outline: no speckle at country scale
-  return on ? { color: '#ffffff', weight: w, opacity: 0.95, fillColor: CIRCLE_COLOR, fillOpacity: 0.6 }
+  return on ? { color: '#ffffff', weight: w, opacity: 0.95, fillColor: CIRCLE_COLOR, fillOpacity: 0.85 }   // 85 %: the yellow is not darkened by the blue below
             : { color: '#ffffff', weight: 0, opacity: 0, fillColor: CIRCLE_COLOR, fillOpacity: 0.08 };
 }
 function classIndex(v, breaks) {
@@ -4110,7 +4239,7 @@ function circleLegendHtml(c) {
   let svg = '';
   refs.forEach(v => {
     const r = circleRadius(v, c.max), top = base - 2 * r;
-    svg += '<circle cx="' + (R + 2) + '" cy="' + (base - r) + '" r="' + r + '" fill="' + CIRCLE_COLOR + '" fill-opacity="0.25" stroke="' + CIRCLE_COLOR + '" stroke-width="1"/>' +
+    svg += '<circle cx="' + (R + 2) + '" cy="' + (base - r) + '" r="' + r + '" fill="' + CIRCLE_COLOR + '" fill-opacity="0.5" stroke="' + CIRCLE_LINE + '" stroke-width="1"/>' +
            '<line x1="' + (R + 2) + '" y1="' + top + '" x2="' + (2 * R + 12) + '" y2="' + top + '" stroke="#9fb1bd" stroke-dasharray="2 2"/>' +
            '<text x="' + (2 * R + 15) + '" y="' + (top + 3.5) + '">' + escapeHtml(fmtNum(v)) + '</text>';
   });
@@ -4877,18 +5006,19 @@ let pointDots = null;
 function pointDotRenderer() { return pointDots || (pointDots = L.svg({ pane: 'markerPane' })); }
 
 /* Icon of a point layer: the configured path, else the same file name next to the data that was found in atlas_data.js */
-function findPointIcon(cfg) {
+function findPointIcon(cfg, key) {
   const name = cfg.icon.split('/').pop(), dataKey = findPackedKey(cfg.data);
   const tries = [cfg.icon];
   if (dataKey) tries.push(dataKey.slice(0, dataKey.lastIndexOf('/') + 1) + name);
   tries.push('point/' + name, name);
+  if (BUILTIN_ICONS[key]) tries.push(BUILTIN_ICONS[key]);   // last: the icon built into the page
   const next = i => i >= tries.length ? Promise.resolve(false)
     : checkImage(encodeURI(tries[i])).then(ok => { if (ok) { cfg.icon = tries[i]; return true; } return next(i + 1); });
   return next(0);
 }
 function loadPointLayer(key) {
   const cfg = pointLayers[key];
-  return Promise.all([loadGeoJSON(cfg.data), findPointIcon(cfg)]).then(([data, iconOk]) => {
+  return Promise.all([loadGeoJSON(cfg.data), findPointIcon(cfg, key)]).then(([data, iconOk]) => {
     pointState[key].iconOk = iconOk;
     const px = pointIconSize(map ? map.getZoom() : 5);
     pointState[key].layer = L.geoJSON(data, {
