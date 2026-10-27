@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>UNHCR Peru | Protection and Services Atlas</title>
 <link rel="stylesheet" href="lib/leaflet/leaflet.css">
+<!-- Lato: the font of the UNHCR map templates (print pages). Without internet, Arial is used -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&display=swap">
 <style>
 :root{
   --unhcr-blue:#0072bc;
@@ -500,6 +502,7 @@ input.arc-name:focus{border-color:#0072bc;background:#fff;outline:0}
 .map-hint.off{opacity:0;transform:translate(-50%,-8px)}
 @keyframes hintTap{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @media print{.map-hint{display:none}}
+body.printing .map-hint{display:none}   /* not in the print preview either */
 .leaflet-container path.leaflet-interactive:focus,.leaflet-container .leaflet-interactive:focus:not(:focus-visible){outline:none}
 .pt-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 0;color:#334756;cursor:pointer}
 .pt-row input{accent-color:#0072bc;width:15px;height:15px;margin:0}
@@ -721,11 +724,13 @@ body.resizing{cursor:col-resize;user-select:none}
   #mapPage.active .map-layout{height:175mm !important}
   /* Map page: only the pages of the print preview (paper size from setPrintPaper) */
   body.printing > *:not(#printSheet){display:none !important}
-  body.printing #printSheet{position:static !important;display:block !important;padding:0 !important;overflow:visible !important;background:#fff !important}
-  body.printing .ps-toolbar,body.printing .ps-stage{display:none !important}
+  body.printing #printSheet{position:static !important;display:block !important;padding:0 !important;overflow:visible !important;background:#0072bc !important}
+  html:has(body.printing),body.printing{background:#0072bc !important}   /* blue behind the pages: no white line at the edge of a sheet */
+  body.printing .ps-toolbar,body.printing .ps-stage,body.printing .ps-tools{display:none !important}
   body.printing .ps-pages{display:block !important;padding:0 !important;gap:0 !important}
   body.printing .ps-page{box-shadow:none !important;margin:0 !important;break-after:page;page-break-after:always}
   body.printing .ps-page:last-child{break-after:auto;page-break-after:auto}
+  .ps-edit{outline:none !important;background:none !important}
 }
 /* Print preview: pages the size of the paper minus margins (--pw × --ph, set by setPrintPaper) */
 #printSheet{display:none}
@@ -746,52 +751,105 @@ body.printing #printSheet{display:block;position:fixed;inset:0;z-index:100000;ba
 .ps-toolbar.busy .ps-go{opacity:.5;cursor:wait}
 .ps-toolbar.busy select,.ps-toolbar.busy input{pointer-events:none;opacity:.6}
 .ps-tip{flex-basis:100%;font-size:11px;color:#7a8894}
+/* "?" in the toolbar: the printing tips as a tooltip, instead of a long line of text */
+.ps-help{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid #cfd8df;color:#4d6272;font-size:12px;font-weight:700;cursor:help}
+.ps-help:hover{border-color:#0072bc;color:#0072bc}
+/* Small vertical tool bar on the right of the preview: undo, redo, save, reset of the moved names */
+.ps-tools{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:6;display:none;flex-direction:column;gap:4px;background:#fff;
+  border:1px solid #d9e2e8;border-radius:10px;padding:6px;box-shadow:0 4px 14px rgba(22,55,74,.15)}
+body.printing .ps-tools{display:flex}
+.ps-tools button{width:34px;height:34px;border:0;border-radius:7px;background:none;color:#173b59;display:grid;place-items:center;cursor:pointer;padding:0}
+.ps-tools button:hover{background:#eaf5fb;color:#0072bc}
+.ps-tools button:disabled{opacity:.3;cursor:default;background:none;color:#173b59}
+.ps-tools svg{width:18px;height:18px}
+.ps-tools hr{border:0;border-top:1px solid #e3ebf0;margin:2px 3px;width:28px}
 .ps-pages{display:flex;flex-direction:column;align-items:center;gap:20px;padding-top:20px}
 .ps-stage{position:absolute;left:-30000px;top:0}
 .ps-stage #map{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important}
-.ps-map .ps-snap{position:absolute !important;inset:0;width:100%;height:100%;pointer-events:none}
+.ps-map .ps-snap{position:absolute !important;left:0;top:0;width:calc(100% / var(--k,1));height:calc(100% / var(--k,1));transform:scale(var(--k,1));transform-origin:0 0;pointer-events:none}
 .ps-label{background:none;border:0}
 .scr-label span{font-size:11px !important}   /* area names on the screen ("Aa" button): a bit bigger than on paper */
 body.printing .scr-label{display:none}         /* the print preview puts its own names */
 .ps-label span{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:700 9px/1 Arial,Helvetica,sans-serif;color:#10283d;letter-spacing:.2px;
   text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff}
+body.printing #psPages .ps-label span{pointer-events:auto;cursor:move;touch-action:none}   /* drag a name (with its number) to move it */
+body.printing #psPages .ps-label span.grp{pointer-events:none}
+body.printing #psPages .ps-label span:not(.grp):hover{outline:1px dashed #0072bc;outline-offset:1px}
+body.printing #psPages .ps-label span.grp:hover > span{outline:1px dashed #0072bc;outline-offset:1px}
+body.printing #psPages .ps-label span.moved:not(.grp),body.printing #psPages .ps-label span.grp.moved > span{outline:1px dotted #9fb0bd;outline-offset:1px}
+.ps-label span.grp{transform:none;width:0;height:0}   /* number + name moved as one: the wrapper is the anchor, both inside it */
+@media print{body.printing #psPages .ps-label span{outline:none !important}}
+.ps-label span.rk em{margin:0}   /* rank number on its own, inside the area */
+.ps-label em{display:inline-block;min-width:11px;height:11px;padding:0 2px;margin-right:3px;border-radius:6px;background:#0072bc;color:#fff;font:700 8px/11px Arial,Helvetica,sans-serif;text-align:center;font-style:normal;text-shadow:none;box-sizing:border-box;vertical-align:0}   /* rank number */
 body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !important}   /* no hover labels on paper */
-.ps-page{width:var(--pw,281mm);height:var(--ph,193mm);margin:0 auto;flex:0 0 auto;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:3mm;overflow:hidden;
-  font-family:Arial,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;color:#1d3449;box-sizing:border-box}
-.ps-head{height:15mm;flex:0 0 auto;display:flex;align-items:center;gap:5mm;border-bottom:0.8mm solid #0072bc;padding-bottom:2mm}
-.ps-logo{height:8mm;width:auto;flex:0 0 auto}
-.ps-titles{flex:1;min-width:0;border-left:0.3mm solid #cfd8df;padding-left:5mm}
-.ps-heading{font-size:15pt;font-weight:700;line-height:1.15;color:#0b2a44;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ps-sub{font-size:8pt;color:#5b6b78;margin-top:.8mm}
-.ps-meta{text-align:right;font-size:7.5pt;color:#5b6b78;line-height:1.55;white-space:nowrap;flex:0 0 auto}
-.ps-meta b{display:block;color:#0072bc;font-size:7pt;letter-spacing:.4px;text-transform:uppercase}
-.ps-map{flex:1 1 auto;min-height:0;border:0.3mm solid #8a9aa8;position:relative;overflow:hidden}
-.ps-map #map{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important}
-.ps-north{position:absolute;top:4mm;right:4mm;z-index:1000;width:8mm;height:11mm;background:rgba(255,255,255,.9);border-radius:1.2mm;padding:1mm 1.5mm;box-sizing:content-box;box-shadow:0 0 0 0.2mm #c3ced7}
-.ps-bottom{height:34mm;flex:0 0 auto;display:flex;gap:4mm;min-height:0}
-.ps-legendbox{flex:1;min-width:0;overflow:hidden;border:0.3mm solid #d9e2e8;border-radius:1mm;padding:2mm 3mm}
-.ps-ltitle{font-size:7.5pt;font-weight:700;color:#0072bc;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1.5mm}
-.ps-legend{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5mm 5mm;font-size:7pt;line-height:1.4}
-.ps-lblock{min-width:0}
-.ps-lblock.wide{grid-column:span 2}
-.ps-lblock.span2{grid-column:span 2}
-.ps-lblock.span2 .ps-lrows{grid-template-columns:1fr}
-.ps-lblock > b{display:block;font-size:7pt;color:#0b2a44;line-height:1.25}
-.ps-lblock > small{display:block;color:#7a8894;font-size:6pt;line-height:1.25;margin-bottom:.6mm}
-.ps-lrows{display:grid;grid-template-columns:1fr;gap:0 3mm;margin-top:.6mm}
-.ps-lblock.wide .ps-lrows{grid-template-columns:1fr 1fr}
-.ps-lrow{display:flex;align-items:center;gap:1.5mm;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ps-lrow i{display:inline-block;width:3.2mm;height:2.4mm;border-radius:.4mm;flex:0 0 auto;box-shadow:inset 0 0 0 0.15mm rgba(0,0,0,.15)}
-.ps-lrow i.ps-line{height:0;border-top:0.6mm solid;border-radius:0;width:5mm;box-shadow:none}
-.ps-lrow img{width:3.5mm;height:3.5mm;object-fit:contain;flex:0 0 auto}
+.ps-page{width:var(--pw,281mm);height:var(--ph,193mm);margin:0 auto;flex:0 0 auto;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden;
+  font-family:Lato,Arial,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;color:#1d3449;box-sizing:border-box}
+/* Page layout as in the UNHCR templates (A3P / A3L):
+   blue band (logo | title + subtitle | date) · map with round overview map (top right),
+   ranking table + legend (bottom left), scale bar (bottom right) · blue footer (disclaimer + print data).
+   Sizes follow the paper: --k (1 = A4), --hh header, --lh logo, --iw overview map, --lw legend width (setPrintPaper). */
+.ps-head{min-height:var(--hh,17mm);flex:0 0 auto;display:flex;align-items:stretch;gap:calc(6mm * var(--k,1));background:#0072bc;color:#fff;padding:2mm 5mm 1.8mm 4mm;box-sizing:border-box}
+.ps-logo{height:var(--lh,10mm);width:auto;flex:0 0 auto;align-self:center;filter:brightness(0) invert(1)}
+.ps-titles{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.ps-heading{font-size:22pt;font-weight:400;line-height:1.15;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-heading.two{white-space:normal;max-height:2.35em;text-overflow:clip}   /* a long title goes on two lines instead of getting too small */
+.ps-sub{font-size:11pt;color:#cfe6f6;margin-top:.5mm;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-date{flex:0 0 auto;align-self:flex-end;font-size:calc(7pt * var(--k,1));color:#d6e9f6;white-space:nowrap;letter-spacing:.3px}
+/* Editable texts: a dashed line on hover, a solid one while typing (not printed) */
+.ps-edit{outline:0.3mm dashed transparent;outline-offset:.6mm;border-radius:.6mm;cursor:text;min-width:20mm}
+.ps-head .ps-edit:hover,.ps-foot .ps-edit:hover{outline-color:rgba(255,255,255,.7)}
+.ps-head .ps-edit:focus,.ps-foot .ps-edit:focus{outline:0.3mm solid #fff;background:rgba(255,255,255,.1);text-overflow:clip}
+.ps-foot .ps-edit{min-width:8mm;display:inline-block}
+.ps-map{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;background:#e3eef7}
+.ps-map #map{position:absolute !important;left:0 !important;top:0 !important;right:auto !important;bottom:auto !important;
+  width:calc(100% / var(--k,1)) !important;height:calc(100% / var(--k,1)) !important;transform:scale(var(--k,1));transform-origin:0 0}
+/* The map is drawn at A4 size and enlarged with the paper (--k, A3 = 1.41): on A3 the basemap labels, area names,
+   icons and lines are 1.41 × bigger, like an A4 map printed larger, instead of more map with the same small text */
+.ps-map .leaflet-control-container{display:none}   /* zoom / scale / attribution of the screen map: the page has its own */
+/* Round overview map, top right */
+.ps-inset{position:absolute;top:4mm;right:4mm;z-index:1100;width:var(--iw,16mm);height:var(--iw,16mm);border-radius:50%;overflow:hidden;background:#eef2f5;
+  border:.6mm solid #fff;box-shadow:0 0 0 .25mm #9fb0bd,0 .8mm 2.5mm rgba(0,0,0,.2);pointer-events:none}
+.ps-inset.leaflet-container{background:#eef2f5}
+/* Bottom left: ranking table above the legend (white cards); the legend shrinks / goes to 2 columns to fit (psFitLegend) */
+.ps-left{position:absolute;left:4mm;top:4mm;bottom:4mm;z-index:1100;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:2.5mm;max-width:var(--lw,64mm);pointer-events:none}
+.ps-left.wide{width:calc(var(--lw,64mm) * 1.75);max-width:calc(var(--lw,64mm) * 1.75)}
+.ps-card{background:rgba(255,255,255,.97);border-radius:1.2mm;box-shadow:0 .3mm 1.5mm rgba(0,0,0,.2);overflow:hidden;flex:0 0 auto}
+.ps-rank table{border-collapse:collapse;width:100%;table-layout:auto;font-size:calc(6.6pt * var(--k,1))}
+.ps-rank th{background:#bcd8ef;color:#0a4573;font-weight:700;border-bottom:.3mm solid #7fb2dc;padding:1mm 2.5mm;text-align:center;white-space:nowrap}
+.ps-rank td{padding:.6mm 2.5mm;text-align:center;color:#263d4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:36mm}
+.ps-rank tbody tr:nth-child(even) td{background:#ebf3fa}
+.ps-rank tbody tr.sub td{background:#d6e7f5;color:#0a4573;font-weight:700;border-top:.3mm solid #7fb2dc}
+.ps-legend{padding:2.2mm 3mm 2.4mm;font-size:7.5pt;line-height:1.3;flex:0 1 auto;min-height:0}
+.ps-legend.cols2{column-count:2;column-gap:5mm}
+.ps-lblock{break-inside:avoid;margin-bottom:3mm}   /* space between the groups (Services | flood risk | …) */
+.ps-lblock:last-child{margin-bottom:0}
+.ps-lblock > b{display:block;font-size:1.25em;font-weight:400;color:#0072bc;line-height:1.2;margin-bottom:.9mm}
+.ps-lblock > small{display:block;color:#7a8894;font-size:.8em;line-height:1.25;margin-bottom:.5mm;white-space:normal}
+.ps-lrow{display:flex;align-items:center;gap:1.8mm;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:.45mm 0}
+.ps-lrow span{overflow:hidden;text-overflow:ellipsis}
+.ps-lrow i{display:inline-block;width:6mm;height:2.8mm;flex:0 0 auto;box-shadow:inset 0 0 0 0.15mm rgba(0,0,0,.15)}
+.ps-lrow i.ps-line{height:0;border-top:0.6mm solid;width:6mm;box-shadow:none}
+.ps-lrow img{width:3.8mm;height:3.8mm;object-fit:contain;flex:0 0 auto}
 .ps-lrow .pt-dot{display:inline-block;width:3mm;height:3mm;border-radius:50%;flex:0 0 auto}
 .ps-lrow svg{width:6mm;height:3mm;flex:0 0 auto}
-.ps-lnone{font-size:7pt;color:#8b98a2}
-.ps-info{width:74mm;flex:0 0 auto;background:#f4f7f9;border-radius:1mm;padding:2mm 3mm;font-size:6.5pt;color:#3d5163;display:flex;flex-direction:column;gap:1.5mm;overflow:hidden;box-sizing:border-box}
-.ps-info dl{display:grid;grid-template-columns:auto 1fr;gap:.7mm 2.5mm;margin:0;line-height:1.35}
-.ps-info dt{font-weight:700;color:#0b2a44;white-space:nowrap}
-.ps-info dd{margin:0;min-width:0}
-.ps-disc{margin:0;margin-top:auto;font-size:5.8pt;color:#7a8894;line-height:1.35;border-top:0.2mm solid #d9e2e8;padding-top:1.2mm}
+.ps-lnone{color:#8b98a2}
+.ps-circ .an-circ{margin:0;padding:0;border:0}
+.ps-circ .an-circ-h{font-size:.85em;color:#526573;margin-bottom:.6mm}
+.ps-circ svg{display:block;overflow:visible}
+.ps-circ text{font-size:9px;fill:#526573}
+/* Scale bar, bottom right (psScale) */
+.ps-scale{position:absolute;right:5mm;bottom:4mm;z-index:1100;pointer-events:none;color:#1d3449;font-size:calc(6.5pt * var(--k,1));text-align:center;
+  background:none;padding:0}
+.ps-scale:empty{display:none}
+.ps-scale svg{display:block;overflow:visible}
+.ps-scale div{margin-top:.6mm;line-height:1}
+/* Blue footer: disclaimer, then print date · sources · basemap · author · contact · file name */
+.ps-foot{flex:0 0 auto;background:#0072bc;color:#fff;padding:1.5mm 5mm 1.7mm;font-size:calc(5.8pt * var(--k,1));line-height:1.5;box-sizing:border-box}
+.ps-disc{font-style:italic;color:#e3f0fa}
+.ps-metaline{display:flex;flex-wrap:wrap;gap:0 4.5mm}
+.ps-metaline b{font-weight:700}
+.ps-txt input{font:inherit;width:46mm;padding:3px 6px;border:1px solid #cfd8df;border-radius:4px;color:inherit;background:#fff}
+.ps-txt input:focus{outline:2px solid #b9d9ee;border-color:#0072bc}
 </style>
 </head>
 <body>
@@ -830,6 +888,7 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
           <option value="light" data-i18n="bmLight">Light Gray (Esri)</option>
           <option value="terrain" data-i18n="bmTerrain">Topographic (Esri)</option>
           <option value="satellite" data-i18n="bmSatellite">Satellite (Esri)</option>
+          <option value="none" data-i18n="bmNone">No basemap</option>
         </select>
       </label>
       <select aria-label="Language" id="language" onchange="setLanguage(this.value)">
@@ -924,7 +983,7 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
           </div>
         </div>
 
-        <!-- Group 1: basic data (points, lines, polygons) -->
+        <!-- Group 1: basic data (points, lines, polygons = analysis layers) -->
         <div class="panel-group" data-i18n="grpBasic">Basic data</div>
 
         <!-- Service points: one tick box per layer in pointLayers, with its icon -->
@@ -941,8 +1000,19 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
           <div id="infraList"></div>
         </section>
 
+        <!-- Analysis layers (polygons: population, risk, exposure maps), grouped by response area. Filled by renderAnalysisList() -->
+        <section class="panel-section" id="analysisSection">
+          <div class="panel-title clickable" onclick="toggleSection('analysisSection')"><span class="pt-name"><svg class="pt-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5 9.5 2 14 7l-2.5 6.5L4 12.5Z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-i18n="analysisLayers">Statistical Layers</span></span>
+            <button type="button" class="tree-toggle">▼</button></div>
+          <div id="analysisList"></div>
+        </section>
+
+        <!-- Group 2: analysis -->
+        <div class="panel-group" data-i18n="grpAnalysis">Analysis</div>
+
+        <!-- Calculate: select departments or districts and count / sum the layers inside them (window #selCard) -->
         <section class="panel-section" id="adminBoundarySection">
-          <div class="panel-title clickable" onclick="toggleSection('adminBoundarySection')"><span class="pt-name"><svg class="pt-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5 9.5 2 14 7l-2.5 6.5L4 12.5Z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-i18n="adminBoundaries">Administrative Boundaries</span></span>
+          <div class="panel-title clickable" onclick="toggleSection('adminBoundarySection')"><span class="pt-name"><svg class="pt-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="1.5" width="11" height="13" rx="2" fill="currentColor" fill-opacity=".2" stroke="currentColor" stroke-width="1.4"/><path d="M5 4.5h6M5 8h1.5M9.5 8H11M5 11h1.5M9.5 11H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-i18n="calcSecTitle">Calculate</span></span>
             <button type="button" class="tree-toggle">▼</button></div>
           <div class="tree">
             <!-- Areas are chosen only in the selection tool (on the map or by name). The old name list
@@ -966,16 +1036,6 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
           </div>
         </section>
 
-        <!-- Group 2: analysis -->
-        <div class="panel-group" data-i18n="grpAnalysis">Analysis</div>
-
-        <!-- Analysis layers (density, risk, exposure maps), grouped by response area. Filled by renderAnalysisList() -->
-        <section class="panel-section" id="analysisSection">
-          <div class="panel-title clickable" onclick="toggleSection('analysisSection')"><span class="pt-name"><svg class="pt-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 14.5 5.5 8 9 1.5 5.5Z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M1.5 8.5 8 12l6.5-3.5M1.5 11.3 8 14.8l6.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span data-i18n="analysisLayers">Analysis Layers</span></span>
-            <button type="button" class="tree-toggle">▼</button></div>
-          <div id="analysisList"></div>
-        </section>
-
         <!-- Filter analysis: the areas with most people of a group, and their risk (separate tool, window #fltCard) -->
         <section class="panel-section" id="filterSection">
           <div class="panel-title clickable" onclick="toggleSection('filterSection')"><span class="pt-name"><svg class="pt-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.6 5.4v4.8L6.6 14.5V8.4Z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span data-i18n="fltTitle">Filters</span></span>
@@ -987,7 +1047,7 @@ body.printing .leaflet-tooltip,body.printing .leaflet-popup{display:none !import
         </section>
 
         <!-- Version of this page: check it to be sure the newest index.html is the one open -->
-        <div class="page-version">Atlas · v71 · 2026-10-21</div>
+        <div class="page-version">Atlas · v92 · 2026-10-27 · Geoportal</div>
       </aside>
       <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
 
@@ -1064,14 +1124,38 @@ const PARENT_FIELDS = {
 /* From capas.js (points): icon, data file, colour, coverage rings, name */
 const pointLayers = {};
 Object.entries(CFG.points || {}).forEach(([k, p]) => { pointLayers[k] = { icon: p.icon, data: p.data }; });
-const POINT_ICON_SIZE = 26;                 // icon size on the map, in pixels
+/* Espacios de Protección and Oficinas ACNUR built into the page (only 10 points), by file name: they show even when
+   data/atlas_index.js was made before these two layers were in capas.js. The copy in data/ (make_atlas_data.html) is used first. */
+const BUILTIN_POINTS = {"Espacios de Protección.geojson":{"type":"FeatureCollection","name":"Espacios de Protección","features":[{"type":"Feature","properties":{"OBJECTID":1,"nombre_ep":"Aguas Verdes","direccion":"Panamericana Norte 2011, Zarumilla","distrito_ciudad":"Aguas Verdes","provincia":"Zarumilla","departamento":"Tumbes","pais":"Perú","referencia":"Ex Complejo Migratorio / Frente al Centro de Salud de Aguas Verdes","latitud":-3.48578146245016,"longitud":-80.2609106176007},"geometry":{"type":"Point","coordinates":[-80.2609106,-3.4857815]}},{"type":"Feature","properties":{"OBJECTID":2,"nombre_ep":"Cercado de Lima","direccion":"Jirón Hernán Velarde n.° 148, Urb. Santa Beatriz, casa 11","distrito_ciudad":"Lima","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"Media cuadra antes de la UTP sede del Parque Hernán Velarde","latitud":-12.0652630267555,"longitud":-77.0353129353723},"geometry":{"type":"Point","coordinates":[-77.0353129,-12.065263]}},{"type":"Feature","properties":{"OBJECTID":3,"nombre_ep":"Chorrillos","direccion":"Parroquia Cristo Misionero del Padre, Calle San Rodolfo S/N, Urb. Villa Marina, Chorrillos","distrito_ciudad":"Chorrillos","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A espaldas de la Sede del Poder Judicial Villa Marina","latitud":-12.1911839229456,"longitud":-77.0104651174849},"geometry":{"type":"Point","coordinates":[-77.0104651,-12.1911839]}},{"type":"Feature","properties":{"OBJECTID":4,"nombre_ep":"Pueblo Libre","direccion":"Jr. General Clovis n.° 745, Pueblo Libre","distrito_ciudad":"Pueblo Libre","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A una cuadra del Parque El Carmen de Pueblo Libre y 2 cuadras del Mercado Bolívar","latitud":-12.0749663108551,"longitud":-77.0666506218595},"geometry":{"type":"Point","coordinates":[-77.0666506,-12.0749663]}},{"type":"Feature","properties":{"OBJECTID":5,"nombre_ep":"San Juan de Lurigancho","direccion":"Centro Pastoral San José, Calle La Coralinas Mz. L6, Lote 7, Urb. Las Flores de Lima","distrito_ciudad":"San Juan de Lurigancho","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"A la altura del paradero 8 de la Av. Las Flores. Al costado del Colegio Daniel A. Robles – \"DAR\"","latitud":-12.0095169550394,"longitud":-77.0087638450383},"geometry":{"type":"Point","coordinates":[-77.0087638,-12.009517]}},{"type":"Feature","properties":{"OBJECTID":6,"nombre_ep":"San Martín de Porres","direccion":"Mz. D Lt 22 – Asociación Residencial, Av. Perú, San Martín de Porres 15109","distrito_ciudad":"San Martín de Porres","provincia":"Lima","departamento":"Lima","pais":"Perú","referencia":"Frente al Parque Residencial San Francisco, a 3 cuadras del Puente Camote","latitud":-11.9883254693836,"longitud":-77.0986654672969},"geometry":{"type":"Point","coordinates":[-77.0986655,-11.9883255]}}]},"Oficinas ACNUR.geojson":{"type":"FeatureCollection","name":"Oficinas ACNUR","features":[{"type":"Feature","properties":{"OBJECTID":1,"oficina":"Oficina Nacional de ACNUR Perú","tipo":"Oficina Nacional","direccion":"Av. José Pardo 1540, Miraflores","ciudad":"Lima","latitud":-12.1185767624899,"longitud":-77.0434126198879},"geometry":{"type":"Point","coordinates":[-77.0434126,-12.1185768]}},{"type":"Feature","properties":{"OBJECTID":2,"oficina":"Unidad de Terreno de ACNUR en Lima","tipo":"Unidad de Terreno","direccion":"Jr. General Clovis 745, Pueblo Libre","ciudad":"Lima","latitud":-12.0747642674724,"longitud":-77.0666854775604},"geometry":{"type":"Point","coordinates":[-77.0666855,-12.0747643]}},{"type":"Feature","properties":{"OBJECTID":3,"oficina":"Unidad de Terreno de ACNUR en Tumbes","tipo":"Unidad de Terreno","direccion":"Jr. Simón Bolívar 155, Piso 2 (Frente a la Plaza de Armas)","ciudad":"Tumbes","latitud":-3.5669,"longitud":-80.4515},"geometry":{"type":"Point","coordinates":[-80.4515,-3.5669]}},{"type":"Feature","properties":{"OBJECTID":4,"oficina":"Unidad de Terreno de ACNUR en Tacna","tipo":"Unidad de Terreno","direccion":"Calle Los Nardos No. 51, Urb. Pescasseroli (Alt. Cuadra 17 de la Av. Bolognesi)","ciudad":"Tacna","latitud":-18.0025709711335,"longitud":-70.2367022321213},"geometry":{"type":"Point","coordinates":[-70.2367022,-18.002571]}}]}};
+/* Icon size on the map, in pixels, by zoom level: small on the whole of Peru (as in the UNHCR map templates),
+   a bit bigger when zoomed in to a city. [from zoom, size]: the last row whose zoom is reached is used. */
+const POINT_ICON_SIZES = [[0, 12], [7, 14], [9, 18], [11, 22], [13, 26]];
+function pointIconSize(z) {
+  let px = POINT_ICON_SIZES[0][1];
+  POINT_ICON_SIZES.forEach(([from, size]) => { if (z >= from) px = size; });
+  return px;
+}
+const pointIconCache = {};                  // one Leaflet icon per picture and size
+function pointIcon(url, px) {
+  const k = url + '|' + px;
+  return pointIconCache[k] || (pointIconCache[k] = L.icon({ iconUrl: encodeURI(url), iconSize: [px, px], iconAnchor: [px / 2, px / 2], popupAnchor: [0, -px / 2] }));
+}
+function resizePointIcons() {               // after a zoom: icons of every point layer get the size of the new zoom
+  if (!map) return;
+  const px = pointIconSize(map.getZoom());
+  Object.keys(pointLayers).forEach(k => {
+    const st = pointState[k];
+    if (!st.layer || !st.iconOk) return;
+    st.layer.eachLayer(m => { if (m.setIcon && m._iconPx !== px) { m._iconPx = px; m.setIcon(pointIcon(pointLayers[k].icon, px)); } });
+  });
+}
 /* Colour of the dot used instead of the icon if the .png cannot be loaded */
-const POINT_COLORS = {};
+const POINT_COLORS = {};                    // capas.js (points[].color): dot if the icon is missing, and colour of the coverage rings
 Object.entries(CFG.points || {}).forEach(([k, p]) => { POINT_COLORS[k] = p.color || '#0072bc'; });
 /* Field names to try for a point's title in its popup */
-const POINT_NAME_FIELDS = ['Nombre', 'NOMBRE', 'nombre', 'Name', 'NAME', 'name', 'Oficina', 'OFICINA', 'Espacio', 'ESPACIO', 'Titulo', 'TITULO'];
+const POINT_NAME_FIELDS = ['nombre_ep', 'oficina', 'Nombre', 'NOMBRE', 'nombre', 'Name', 'NAME', 'name', 'Espacio', 'ESPACIO', 'Titulo', 'TITULO'];
 /* Fields not shown in point popups */
-const HIDDEN_FIELDS = /^(OBJECTID|FID|OID|ESRI_OID|Shape.*|X|Y|POINT_X|POINT_Y|lat|lon|lng|latitude|longitude)$/i;
+const HIDDEN_FIELDS = /^(OBJECTID|FID|OID|ESRI_OID|Shape.*|X|Y|POINT_X|POINT_Y|lat|lon|lng|latitude|longitude|latitud|longitud|nombre_ep|oficina)$/i;   // nombre_ep / oficina are the popup title
 const pointState = {};                      // per layer: on/off, Leaflet layer, number of points
 Object.keys(pointLayers).forEach(k => { pointState[k] = { on: true, layer: null, count: null, error: false, iconOk: null, buffer: false, bufLayer: null }; });
 const dataCache = {};                       // each GeoJSON file is read only once
@@ -1160,9 +1244,24 @@ function renameHazardFields(path, data) {
     miss.slice(0, 50).map(f => (ubigeoOf(f.properties) || '?') + ' ' + (pickField(propsByBase(f.properties), ['DISTRITO', 'NOMBDIST'], false) || '')));
   else console.info('[' + key + '] all ' + data.features.length + ' districts have niv_riesgo_' + sx);
 }
-const ANALYSIS_COLORS = ['#fee8c8', '#fdbb84', '#fc8d59', '#e34a33', '#b30000'];   // light → dark (5 classes)
+const ANALYSIS_COLORS = ['#cde3f1', '#8fc1e1', '#4f9ed0', '#0072bc', '#05568b', '#0b3754'];   // light → dark blue (6 classes, same as the ArcGIS maps)
+const RISK_COLORS = ['#cde3f1', '#8fc1e1', '#4f9ed0', '#0072bc', '#0b3754'];   // risk values in Filters (number columns): light → dark blue, as the UNHCR maps
+/* Colour of class i when there are k classes: spread over the palette, so 6 classes use all six blues;
+   a single class (one area, or all areas equal) gets the middle UNHCR blue instead of the darkest one */
+function classFill(i, k) {
+  const L = ANALYSIS_COLORS.length;
+  if (k <= 1) return ANALYSIS_COLORS[3];
+  return ANALYSIS_COLORS[Math.round(i * (L - 1) / (k - 1))];
+}
+/* Legend text of a class; with one class only the real range of the values is shown (not "≥ 0") */
+function classRangeText(values) {
+  const v = values.filter(x => x !== null && isFinite(x));
+  if (!v.length) return '—';
+  const lo = Math.min(...v), hi = Math.max(...v);
+  return lo === hi ? fmtNum(lo) : fmtNum(lo) + ' – ' + fmtNum(hi);
+}
 const ANALYSIS_NODATA = '#eceff1';          // areas with no value
-const CATEGORY_COLORS = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666'];
+const CATEGORY_COLORS = ['#0072bc', '#8fc1e1', '#0b3754', '#4f9ed0', '#cde3f1', '#05568b', '#a7bccb', '#5b7a90'];   // other categories: shades of UNHCR blue
 /* Guessing which column holds what (the first match is chosen; you can change it on the page) */
 const POP_FIELD_RE = /pobl|personas|habit|^pop|total|cant|n[uú]mero|registr|venez|benef/i;
 const RISK_FIELD_RE = /riesgo|nivel|susc|categ|clase|peligro|amenaza|exposic|vulnerab/i;
@@ -1183,6 +1282,12 @@ const FIELD_LABELS = {
   PROVINCIA:   { es: 'Provincia', en: 'Province', zh: '省', also: ['NOMBPROV'], menu: false },
   DISTRITO:    { es: 'Distrito', en: 'District', zh: '区', also: ['NOMBDIST', 'NOMB_DIST'], menu: false },
   UBIGEO:      { es: 'Código UBIGEO', en: 'UBIGEO code', zh: 'UBIGEO 代码' },
+  // Service points (Espacios de Protección, Oficinas ACNUR): popup only
+  tipo:            { es: 'Tipo de oficina', en: 'Type of office', zh: '办事处类型', menu: false },
+  direccion:       { es: 'Dirección', en: 'Address', zh: '地址', menu: false },
+  referencia:      { es: 'Referencia', en: 'Directions', zh: '位置说明', menu: false },
+  distrito_ciudad: { es: 'Distrito / ciudad', en: 'District / city', zh: '区 / 城市', menu: false, also: ['ciudad'] },
+  pais:            { es: 'País', en: 'Country', zh: '国家', menu: false },
   // El Niño – CENEPRED summer 2027 (diccionario_datos_riesgo_q1_2027.xlsx). listed first, so in El Niño menus and popups the risk comes before the population
   niv_riesgo_inund: { es: 'Nivel de riesgo por inundaciones', en: 'Flood risk level', zh: '洪水风险等级' },
   niv_susc_inund:   { es: 'Nivel de susceptibilidad a inundaciones', en: 'Flood susceptibility level', zh: '洪水易发性等级' },
@@ -1413,10 +1518,13 @@ const I18N = {
     badgePublic: 'PUBLIC VERSION',
     badgeInternal: 'INTERNAL USE',
     print: 'Print',
-    psPaper: 'Paper', psLandscape: 'landscape', psNames: 'Show area names', psCurrent: 'Current map', psBatch: 'Batch: one page per indicator / layer ({n} pages)',
+    psPaper: 'Paper', psLandscape: 'Landscape', psPortrait: 'Portrait', psNames: 'Show area names', psCurrent: 'Current map', psBatch: 'Batch: one page per indicator / layer ({n} pages)',
     psBatchNone: 'Calculate several indicators or tick several analysis layers to print them in a batch.', psBusyN: 'Making page {i} of {n}…', psReady: '{n} pages ready', psNamesN: '{n} area names on the map',
-    psPrint: 'Print', psClose: 'Close', psTip: 'In the print window choose the same paper, landscape, margins “Default”, scale 100 %, untick “Headers and footers” and tick “Background graphics”.', printSrcL: 'Source', printSrcV: 'UNHCR Peru – Protection and Services Atlas', printBaseL: 'Basemap', printDateL: 'Map date', printLegend: 'Legend', printSelected: 'Selected areas', printSelectedN: '{n} selected areas (outline)',
+    psPrint: 'Print', psClose: 'Close', psTip: 'In the print window choose “Save as PDF” (the paper is then set for you) or the same paper and orientation; another paper also works, the page is scaled to it. Margins “None” or “Default”, scale “Default”, untick “Headers and footers” and tick “Background graphics”.', printSrcL: 'Source', printSrcV: 'UNHCR Peru – Protection and Services Atlas', printBaseL: 'Basemap', printDateL: 'Map date', printLegend: 'Legend', printSelected: 'Selected areas', printSelectedN: '{n} selected areas (outline)',
     printDisclaimer: 'The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.',
+    psLang: 'Map language', psInset: 'Overview map', psEditTip: 'Title / Subtitle above apply to every page (empty = automatic). Click the title, subtitle, author or contact on a page to change only that page.', psLblReset: 'Reset names', psLblUndo: 'Undo', psLblRedo: 'Redo', psLblSave: 'Save names', psLblSaveTip: 'Keep the moved names in this browser for next time', psLblSaved: 'Name positions saved', psLblNoSave: 'This browser does not allow saving', psLblTip: 'Drag an area name on the map to move it; double-click it to put it back.', psTitleL: 'Title', psSubL: 'Subtitle', psAutoPh: 'Automatic (from the map)', psTop: 'Ranking table', printServices: 'Services', printPeru: 'Peru outline', rkNo: 'No.', rkShare: '% of total', rkSub: 'Subtotal', rkUnit_departments: 'Department', rkUnit_districts: 'District', rkUnit_provinces: 'Province', printPrinted: 'Print date', printSources: 'Sources', printAuthor: 'Author', printAuthorV: 'UNHCR Peru', printContact: 'Contact', printFile: 'File name',
+    printHowTitle: 'How to read this map', printHowArea: 'Colours show {what}.', printHowOutline: 'Administrative boundaries of Peru are drawn as outlines.',
+    printHowSel: 'Dark blue outlines mark the {n} selected areas.', printHowSym: 'Symbols and lines: {list}.', printHowInset: 'The overview map (top right) marks the area of this map with a thin dark blue outline.',
     switchMode: 'Lock',
     authTitle: 'Protection and Services Atlas',
     authText: 'Internal access only. Enter the password to continue.',
@@ -1493,12 +1601,12 @@ const I18N = {
     fltMore: '+ {n} more on the map', fltSheetSum: 'Summary', fltSheetList: 'Areas', fltShare: 'Share', fltCount: 'Areas', fltValue: 'Risk value', fltNoRiskField: 'This layer has no risk column: choose another layer.', fltSortBy: 'Click to sort by this column (# stays the population rank)',
     back: 'BACK',
     mapTitleDefault: 'Map Explorer',
-    adminBoundaries: 'Administrative Boundaries', grpBasic: 'Basic data', grpAnalysis: 'Analysis',
+    adminBoundaries: 'Administrative Boundaries', calcSecTitle: 'Calculate', grpBasic: 'Basic data', grpAnalysis: 'Analysis',
     dept: 'Departments', dist: 'Districts (L3)',
     basemapStyle: 'Basemap Style',
-    bmStreet: 'Street Map (Esri)', bmLight: 'Light Gray (Esri)', bmTerrain: 'Topographic (Esri)', bmSatellite: 'Satellite (Esri)',
+    bmStreet: 'Street Map (Esri)', bmLight: 'Light Gray (Esri)', bmTerrain: 'Topographic (Esri)', bmSatellite: 'Satellite (Esri)', bmNone: 'No basemap',
     peru: 'Peru', boundaries: 'Boundaries',
-    analysisLayers: 'Analysis Layers', comingSoon: 'Coming soon', noLayersYet: 'No layers yet', showAs: 'Show as', asPoints: 'Points', byLevel: 'Total by {level}', calc: 'Calculate', countRecords: 'Number of records', sumOf: 'Sum of {field}', colorByLbl: 'Colour by', oneColour: 'One colour', totalLbl: 'Total', areasWithData: '{n} of {all} areas have data', outsideLbl: '{n} records fall outside the boundaries', topLbl: 'Highest areas', valueLbl: 'Value', shareLbl: 'Share of total', rankLbl: 'Rank', calculating: 'Calculating…', noDataLbl: 'No data', recordsLbl: '{n} records', featuresLbl: '{n} areas',
+    analysisLayers: 'Statistical Layers', comingSoon: 'Coming soon', noLayersYet: 'No layers yet', showAs: 'Show as', asPoints: 'Points', byLevel: 'Total by {level}', calc: 'Calculate', countRecords: 'Number of records', sumOf: 'Sum of {field}', colorByLbl: 'Colour by', oneColour: 'One colour', totalLbl: 'Total', areasWithData: '{n} of {all} areas have data', outsideLbl: '{n} records fall outside the boundaries', topLbl: 'Highest areas', valueLbl: 'Value', shareLbl: 'Share of total', rankLbl: 'Rank', calculating: 'Calculating…', noDataLbl: 'No data', recordsLbl: '{n} records', featuresLbl: '{n} areas',
     searchPh: 'Search a place, point or layer…', noResults: 'No results', srPoint: 'Point', srLayer: 'Layer', noticeAnalysisFail: 'Could not load analysis layer: {name}.',
     mapSub: 'Viewing Administrative Level 1',
     level_departments: 'Departments', level_provinces: 'Provinces', level_districts: 'Districts',
@@ -1572,8 +1680,7 @@ const I18N = {
     bufShow: 'Show the service radius ({r})', bufHide: 'Hide the service radius', bufLegend: 'Service radius', bufPopup: 'Service radius {r}: shown on the map while this window is open.', bufNote: 'Solid ring = inner radius, dashed ring = outer radius. Straight-line distance from each point, not travel time.',
     bufRef: '5 km follows the UNHCR primary health care coverage standard (a facility within 5 km, about 1 hour on foot); the other distances are working reference values.',
     pointData: 'Service Points', infraTitle: 'Public Infrastructure', infraAll: 'Show all', noticeLayerFail: 'Could not load layer: {name}.',
-    pt_CEBAF: 'CEBAF (border centres)', pt_DataCollection: 'Data collection points',
-    pt_UNHCR: 'UNHCR offices', pt_PAO: 'PAOs (orientation points)',
+    pt_ProtectionSpace: 'Protection spaces', pt_UNHCR: 'UNHCR offices',
     noticePointFail: 'Could not load point layer: {name}.',
     noticeProjected: '{file} uses projected coordinates (e.g. UTM). Export it again in WGS84 (EPSG:4326).'
   },
@@ -1583,10 +1690,13 @@ const I18N = {
     badgePublic: 'VERSIÓN PÚBLICA',
     badgeInternal: 'USO INTERNO',
     print: 'Imprimir',
-    psPaper: 'Papel', psLandscape: 'horizontal', psNames: 'Mostrar nombres de áreas', psCurrent: 'Mapa actual', psBatch: 'Lote: una página por indicador / capa ({n} páginas)',
+    psPaper: 'Papel', psLandscape: 'Horizontal', psPortrait: 'Vertical', psNames: 'Mostrar nombres de áreas', psCurrent: 'Mapa actual', psBatch: 'Lote: una página por indicador / capa ({n} páginas)',
     psBatchNone: 'Calcule varios indicadores o marque varias capas de análisis para imprimirlos en lote.', psBusyN: 'Preparando página {i} de {n}…', psReady: '{n} páginas listas', psNamesN: '{n} nombres de áreas en el mapa',
-    psPrint: 'Imprimir', psClose: 'Cerrar', psTip: 'En la ventana de impresión elija el mismo papel, horizontal, márgenes “Predeterminados”, escala 100 %, desmarque “Encabezados y pies de página” y marque “Gráficos de fondo”.', printSrcL: 'Fuente', printSrcV: 'ACNUR Perú – Atlas de Protección y Servicios', printBaseL: 'Mapa base', printDateL: 'Fecha del mapa', printLegend: 'Leyenda', printSelected: 'Áreas seleccionadas', printSelectedN: '{n} áreas seleccionadas (contorno)',
+    psPrint: 'Imprimir', psClose: 'Cerrar', psTip: 'En la ventana de impresión elija “Guardar como PDF” (el papel se elige solo) o el mismo papel y orientación; otro papel también sirve, la página se ajusta. Márgenes “Ninguno” o “Predeterminados”, escala “Predeterminada”, desmarque “Encabezados y pies de página” y marque “Gráficos de fondo”.', printSrcL: 'Fuente', printSrcV: 'ACNUR Perú – Atlas de Protección y Servicios', printBaseL: 'Mapa base', printDateL: 'Fecha del mapa', printLegend: 'Leyenda', printSelected: 'Áreas seleccionadas', printSelectedN: '{n} áreas seleccionadas (contorno)',
     printDisclaimer: 'Los límites y los nombres que figuran en este mapa y las denominaciones empleadas en él no implican su apoyo o aceptación oficial por las Naciones Unidas.',
+    psLang: 'Idioma del mapa', psInset: 'Mapa de ubicación', psEditTip: 'Título / Subtítulo de arriba se aplican a todas las páginas (vacío = automático). Haga clic en el título, subtítulo, autor o contacto de una página para cambiar solo esa página.', psLblReset: 'Restablecer nombres', psLblUndo: 'Deshacer', psLblRedo: 'Rehacer', psLblSave: 'Guardar nombres', psLblSaveTip: 'Guardar los nombres movidos en este navegador para la próxima vez', psLblSaved: 'Posiciones de los nombres guardadas', psLblNoSave: 'Este navegador no permite guardar', psLblTip: 'Arrastre el nombre de un área en el mapa para moverlo; doble clic para devolverlo a su sitio.', psTitleL: 'Título', psSubL: 'Subtítulo', psAutoPh: 'Automático (según el mapa)', psTop: 'Tabla de ranking', printServices: 'Servicios', printPeru: 'Contorno Perú', rkNo: 'N°', rkShare: '% del total', rkSub: 'Subtotal', rkUnit_departments: 'Departamento', rkUnit_districts: 'Distrito', rkUnit_provinces: 'Provincia', printPrinted: 'Fecha de impresión', printSources: 'Fuentes', printAuthor: 'Autor', printAuthorV: 'ACNUR Perú', printContact: 'Contacto', printFile: 'Nombre de archivo',
+    printHowTitle: 'Cómo leer este mapa', printHowArea: 'Los colores muestran {what}.', printHowOutline: 'Los límites administrativos del Perú se dibujan como contornos.',
+    printHowSel: 'Los contornos azul oscuro marcan las {n} áreas seleccionadas.', printHowSym: 'Símbolos y líneas: {list}.', printHowInset: 'El mapa de ubicación (arriba a la derecha) marca con un contorno azul oscuro el área de este mapa.',
     switchMode: 'Salir',
     authTitle: 'Atlas de Protección y Servicios',
     authText: 'Acceso solo interno. Ingrese la contraseña para continuar.',
@@ -1663,12 +1773,12 @@ const I18N = {
     fltMore: '+ {n} más en el mapa', fltSheetSum: 'Resumen', fltSheetList: 'Áreas', fltShare: 'Parte', fltCount: 'Áreas', fltValue: 'Valor de riesgo', fltNoRiskField: 'Esta capa no tiene campo de riesgo: elija otra capa.', fltSortBy: 'Clic para ordenar por esta columna (N.º sigue siendo el puesto por población)',
     back: 'VOLVER',
     mapTitleDefault: 'Explorador de mapas',
-    adminBoundaries: 'Límites administrativos', grpBasic: 'Datos básicos', grpAnalysis: 'Análisis',
+    adminBoundaries: 'Límites administrativos', calcSecTitle: 'Calcular', grpBasic: 'Datos básicos', grpAnalysis: 'Análisis',
     dept: 'Departamentos', dist: 'Distritos (N3)',
     basemapStyle: 'Estilo de mapa base',
-    bmStreet: 'Mapa de calles (Esri)', bmLight: 'Gris claro (Esri)', bmTerrain: 'Topográfico (Esri)', bmSatellite: 'Satélite (Esri)',
+    bmStreet: 'Mapa de calles (Esri)', bmLight: 'Gris claro (Esri)', bmTerrain: 'Topográfico (Esri)', bmSatellite: 'Satélite (Esri)', bmNone: 'Sin mapa base',
     peru: 'Perú', boundaries: 'Límites',
-    analysisLayers: 'Capas de análisis', comingSoon: 'Próximamente', noLayersYet: 'Aún no hay capas', showAs: 'Mostrar como', asPoints: 'Puntos', byLevel: 'Total por {level}', calc: 'Calcular', countRecords: 'Número de registros', sumOf: 'Suma de {field}', colorByLbl: 'Colorear por', oneColour: 'Un solo color', totalLbl: 'Total', areasWithData: '{n} de {all} áreas con datos', outsideLbl: '{n} registros quedan fuera de los límites', topLbl: 'Áreas con valores más altos', valueLbl: 'Valor', shareLbl: 'Parte del total', rankLbl: 'Puesto', calculating: 'Calculando…', noDataLbl: 'Sin datos', recordsLbl: '{n} registros', featuresLbl: '{n} áreas',
+    analysisLayers: 'Capas estadísticas', comingSoon: 'Próximamente', noLayersYet: 'Aún no hay capas', showAs: 'Mostrar como', asPoints: 'Puntos', byLevel: 'Total por {level}', calc: 'Calcular', countRecords: 'Número de registros', sumOf: 'Suma de {field}', colorByLbl: 'Colorear por', oneColour: 'Un solo color', totalLbl: 'Total', areasWithData: '{n} de {all} áreas con datos', outsideLbl: '{n} registros quedan fuera de los límites', topLbl: 'Áreas con valores más altos', valueLbl: 'Valor', shareLbl: 'Parte del total', rankLbl: 'Puesto', calculating: 'Calculando…', noDataLbl: 'Sin datos', recordsLbl: '{n} registros', featuresLbl: '{n} áreas',
     searchPh: 'Buscar un lugar, punto o capa…', noResults: 'Sin resultados', srPoint: 'Punto', srLayer: 'Capa', noticeAnalysisFail: 'No se pudo cargar la capa de análisis: {name}.',
     mapSub: 'Nivel administrativo 1',
     level_departments: 'Departamentos', level_provinces: 'Provincias', level_districts: 'Distritos',
@@ -1742,8 +1852,7 @@ const I18N = {
     bufShow: 'Mostrar el radio de servicio ({r})', bufHide: 'Ocultar el radio de servicio', bufLegend: 'Radio de servicio', bufPopup: 'Radio de servicio {r}: se muestra en el mapa mientras esta ventana está abierta.', bufNote: 'Anillo continuo = radio interior, anillo discontinuo = radio exterior. Distancia en línea recta desde cada punto, no tiempo de viaje.',
     bufRef: '5 km sigue el estándar de cobertura de atención primaria de salud del ACNUR (un establecimiento a 5 km, cerca de 1 hora a pie); las demás distancias son valores de referencia de trabajo.',
     pointData: 'Puntos de servicio', infraTitle: 'Infraestructura pública', infraAll: 'Mostrar todo', noticeLayerFail: 'No se pudo cargar la capa: {name}.',
-    pt_CEBAF: 'CEBAF (centros de frontera)', pt_DataCollection: 'Puntos de recolección de datos',
-    pt_UNHCR: 'Oficinas del ACNUR', pt_PAO: 'PAO (puntos de atención y orientación)',
+    pt_ProtectionSpace: 'Espacios de Protección', pt_UNHCR: 'Oficinas ACNUR',
     noticePointFail: 'No se pudo cargar la capa de puntos: {name}.',
     noticeProjected: '{file} usa coordenadas proyectadas (p. ej. UTM). Expórtelo de nuevo en WGS84 (EPSG:4326).'
   },
@@ -1753,10 +1862,13 @@ const I18N = {
     badgePublic: '公开版',
     badgeInternal: '内部使用',
     print: '打印',
-    psPaper: '纸张', psLandscape: '横向', psNames: '显示行政区名称', psCurrent: '当前地图', psBatch: '批量：每个指标 / 图层各一页（{n} 页）',
+    psPaper: '纸张', psLandscape: '横向', psPortrait: '纵向', psNames: '显示行政区名称', psCurrent: '当前地图', psBatch: '批量：每个指标 / 图层各一页（{n} 页）',
     psBatchNone: '计算多个指标或勾选多个分析图层后，才能批量打印。', psBusyN: '正在生成第 {i} / {n} 页…', psReady: '已生成 {n} 页', psNamesN: '地图上标注了 {n} 个行政区名称',
-    psPrint: '打印', psClose: '关闭', psTip: '打印窗口里请选择相同纸张、横向，边距“默认”，缩放 100%，取消勾选“页眉和页脚”，勾选“背景图形”。', printSrcL: '数据来源', printSrcV: '联合国难民署秘鲁办事处 · 保护与服务地图集', printBaseL: '底图', printDateL: '制图日期', printLegend: '图例', printSelected: '所选区域', printSelectedN: '{n} 个所选区域（轮廓）',
+    psPrint: '打印', psClose: '关闭', psTip: '打印窗口里选「另存为 PDF」（纸张会自动设好），或选相同的纸张和方向；选了别的纸张也可以，页面会自动缩放铺满。边距选“无”或“默认”，缩放选“默认”，取消勾选“页眉和页脚”，勾选“背景图形”。', printSrcL: '数据来源', printSrcV: '联合国难民署秘鲁办事处 · 保护与服务地图集', printBaseL: '底图', printDateL: '制图日期', printLegend: '图例', printSelected: '所选区域', printSelectedN: '{n} 个所选区域（轮廓）',
     printDisclaimer: '本地图所示边界和名称以及所用称谓并不意味着联合国正式认可或接受。',
+    psLang: '地图语言', psInset: '位置小地图', psEditTip: '上方“主标题 / 副标题”对所有页面生效（留空 = 自动）。点击某一页上的标题、副标题、作者或联系人，只修改这一页。', psLblReset: '名称复位', psLblUndo: '撤销', psLblRedo: '重做', psLblSave: '保存名称位置', psLblSaveTip: '把移动过的名称位置保存在本浏览器，下次打开仍然有效', psLblSaved: '名称位置已保存', psLblNoSave: '此浏览器不允许保存', psLblTip: '在地图上拖动区域名称即可移动；双击名称恢复原位。', psTitleL: '主标题', psSubL: '副标题', psAutoPh: '自动（根据地图）', psTop: '排名表', printServices: '服务', printPeru: '秘鲁边界', rkNo: '序号', rkShare: '占总数 %', rkSub: '小计', rkUnit_departments: '大区', rkUnit_districts: '区', rkUnit_provinces: '省', printPrinted: '打印日期', printSources: '数据来源', printAuthor: '制图', printAuthorV: '联合国难民署秘鲁办事处', printContact: '联系人', printFile: '文件名',
+    printHowTitle: '如何阅读本图', printHowArea: '颜色表示{what}。', printHowOutline: '图中以轮廓线显示秘鲁行政边界。',
+    printHowSel: '深蓝色轮廓为 {n} 个所选区域。', printHowSym: '符号与线条：{list}。', printHowInset: '右上角位置小地图中的深蓝色细框为本图范围。',
     switchMode: '退出',
     authTitle: '保护与服务地图集',
     authText: '仅限内部访问。请输入密码继续。',
@@ -1833,12 +1945,12 @@ const I18N = {
     fltMore: '另有 {n} 个只显示在地图上', fltSheetSum: '汇总', fltSheetList: '区域列表', fltShare: '占比', fltCount: '区域数', fltValue: '风险数值', fltNoRiskField: '这个图层没有风险字段，请换一个图层。', fltSortBy: '点击按此列排序（排名列仍是人口排名）',
     back: '返回上一级',
     mapTitleDefault: '地图浏览',
-    adminBoundaries: '行政边界', grpBasic: '基础数据', grpAnalysis: '分析',
+    adminBoundaries: '行政边界', calcSecTitle: '计算', grpBasic: '基础数据', grpAnalysis: '分析',
     dept: '大区', dist: '区（三级）',
     basemapStyle: '底图样式',
-    bmStreet: '街道地图（Esri）', bmLight: '浅灰底图（Esri）', bmTerrain: '地形图（Esri）', bmSatellite: '卫星影像（Esri）',
+    bmStreet: '街道地图（Esri）', bmLight: '浅灰底图（Esri）', bmTerrain: '地形图（Esri）', bmSatellite: '卫星影像（Esri）', bmNone: '无底图',
     peru: '秘鲁', boundaries: '行政边界',
-    analysisLayers: '分析图层', comingSoon: '待添加', noLayersYet: '暂无图层', showAs: '显示方式', asPoints: '点', byLevel: '按{level}汇总', calc: '计算', countRecords: '记录数', sumOf: '{field} 合计', colorByLbl: '着色字段', oneColour: '单一颜色', totalLbl: '合计', areasWithData: '{all} 个区域中 {n} 个有数据', outsideLbl: '{n} 条记录不在边界内', topLbl: '数值最高的区域', valueLbl: '数值', shareLbl: '占合计', rankLbl: '排名', calculating: '计算中…', noDataLbl: '无数据', recordsLbl: '{n} 条记录', featuresLbl: '{n} 个区域',
+    analysisLayers: '统计图层', comingSoon: '待添加', noLayersYet: '暂无图层', showAs: '显示方式', asPoints: '点', byLevel: '按{level}汇总', calc: '计算', countRecords: '记录数', sumOf: '{field} 合计', colorByLbl: '着色字段', oneColour: '单一颜色', totalLbl: '合计', areasWithData: '{all} 个区域中 {n} 个有数据', outsideLbl: '{n} 条记录不在边界内', topLbl: '数值最高的区域', valueLbl: '数值', shareLbl: '占合计', rankLbl: '排名', calculating: '计算中…', noDataLbl: '无数据', recordsLbl: '{n} 条记录', featuresLbl: '{n} 个区域',
     searchPh: '搜索地名、点位或图层…', noResults: '没有结果', srPoint: '点位', srLayer: '图层', noticeAnalysisFail: '无法加载分析图层：{name}。',
     mapSub: '当前：一级行政区',
     level_departments: '大区', level_provinces: '省', level_districts: '区',
@@ -1912,8 +2024,7 @@ const I18N = {
     bufShow: '显示服务半径（{r}）', bufHide: '隐藏服务半径', bufLegend: '服务半径', bufPopup: '服务半径 {r}：此窗口打开时显示在地图上。', bufNote: '实线圈 = 内圈半径，虚线圈 = 外圈半径。均为从各服务点出发的直线距离，不是实际通行时间。',
     bufRef: '5 km 参考联合国难民署初级卫生保健覆盖标准（5 km 内有卫生设施，约步行 1 小时）；其余距离为工作参考值。',
     pointData: '服务点', infraTitle: '公共基础设施', infraAll: '全部显示', noticeLayerFail: '无法加载图层：{name}。',
-    pt_CEBAF: 'CEBAF 边境服务中心', pt_DataCollection: '数据收集点',
-    pt_UNHCR: '难民署办事处', pt_PAO: 'PAO 咨询服务点',
+    pt_ProtectionSpace: '保护空间', pt_UNHCR: '难民署办事处',
     noticePointFail: '无法加载点数据图层：{name}。',
     noticeProjected: '{file} 使用投影坐标（如 UTM），请重新导出为 WGS84（EPSG:4326）。'
   }
@@ -2142,8 +2253,9 @@ function backToHome(e) {
   document.getElementById('basemapWrap').hidden = true;
 }
 
+let psPrinting = false;     // true while the browser's print window is open: the page must not change then
 function refreshMapSize() {
-  if (!map) return;
+  if (!map || psPrinting) return;
   map.invalidateSize();
   setTimeout(() => { map.invalidateSize(); }, 250);
 }
@@ -2161,15 +2273,18 @@ const ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 19C5 19 1 12 1 12a18.4 18.4 0 0 1 5.1-5.9M9.9 5.2A9.2 9.2 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
 const ICON_PRINT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>';
-const PS_NORTH = '<svg class="ps-north" viewBox="0 0 40 55" aria-hidden="true"><path d="M20 3 L32 40 L20 32 L8 40 Z" fill="#0b2a44"/><path d="M20 3 L20 32 L8 40 Z" fill="#fff" stroke="#0b2a44" stroke-width="1.5" stroke-linejoin="round"/><text x="20" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="#0b2a44" font-family="Arial">N</text></svg>';
 
 /* Print: a preview with only the map frame, laid out to fill the paper
    (header, map, legend, source). Options in the preview's toolbar:
    paper size, area names on the map, and batch = one page per indicator / analysis layer.
    The map element is moved into the preview while it is open and put back afterwards. */
-const PS_PAPERS = { a4: [297, 210], letter: [279.4, 215.9], a3: [420, 297] };   // landscape, mm
-const PS_MARGIN = 8;
-const PS_OPT = { paper: 'a4', names: true, batch: false };
+const PS_PAPERS = { a4: [297, 210], letter: [279.4, 215.9], a3: [420, 297] };   // landscape, mm (portrait = turned)
+const PS_MARGIN = 0;        // no white edge: the blue bands go to the edge of the paper, as in the templates
+const PS_OPT = { paper: 'a4', orient: 'landscape', names: true, batch: false, lang: 'en', inset: true, top: true, title: '', sub: '' };   // title / sub: typed in the toolbar, for every page
+const PS_EDIT = {};         // texts typed on the pages: { page key: { title, sub } }, { meta: { author, contact } } (kept while this page is open)
+const PS_SA = [[-56.5, -82.5], [13.5, -34]];   // South America: what the overview map shows
+let psInsets = [];          // overview maps of the pages (small Leaflet maps)
+let psLiveInset = null;     // the one that follows the live map (single page)
 let printSaved = null;      // map state while the preview is open
 let psLabels = null;        // area names on the map (only in the preview)
 let psRun = 0;              // build number: a newer build stops an older one
@@ -2177,17 +2292,27 @@ let psRun = 0;              // build number: a newer build stops an older one
 function printPage() {
   const mapPage = document.getElementById('mapPage');
   if (!map || !mapPage || !mapPage.classList.contains('active')) { window.print(); return; }   // landing page: as before
-  PS_OPT.paper = 'a4';                        // each time the preview opens: A4 landscape, with area names
+  PS_OPT.paper = 'a4';                        // each time the preview opens: A4 (orientation as chosen last), with area names
   PS_OPT.names = true;
-  enterPrintSheet(false);
-  buildPrintPages();
+  try {
+    enterPrintSheet(false);
+    buildPrintPages();
+  } catch (err) { psFail(err); }
+}
+/* Something went wrong while making the print pages: say what (status line + notice + console), keep the page usable */
+function psFail(err) {
+  console.error('Print preview error:', err);
+  const msg = 'Print error: ' + ((err && err.message) || err);
+  try { psStatus(msg, false); } catch (e) { /* toolbar not there */ }
+  showNotice(msg, 15000);
 }
 
 function enterPrintSheet(viaKeys) {
   if (printSaved || !map) return;
+  PS_OPT.lang = currentLang;                  // the pages start in the language of the site; the toolbar can change it
   const mapEl = document.getElementById('map');
   printSaved = {
-    bounds: map.getBounds(), parent: mapEl.parentNode, next: mapEl.nextSibling, snap: map.options.zoomSnap, viaKeys: !!viaKeys, dirty: false,
+    bounds: map.getBounds(), mapEl: mapEl, parent: mapEl.parentNode, next: mapEl.nextSibling, snap: map.options.zoomSnap, viaKeys: !!viaKeys, dirty: false,
     state: {                                  // what the batch pages change, to put it back
       mapCard: SEL.mapCard, mapOff: SEL.mapOff,
       fields: Object.keys(CALC).map(k => [k, CALC[k] && CALC[k].mapField]),
@@ -2205,6 +2330,7 @@ function enterPrintSheet(viaKeys) {
     return [pane, old];
   }).filter(Boolean);
   document.body.classList.add('printing');
+  map.on('moveend', psLiveFollow);           // single page: the overview map follows when the map is moved
   setPrintPaper();
   renderPrintToolbar();
   if (viaKeys) psSinglePage();                // Ctrl+P: no time to wait, one page with the map as it is
@@ -2214,7 +2340,9 @@ function leavePrintSheet() {
   psRun++;                                    // stop a batch still being made
   psRestoreState();
   psRemoveLabels();
-  const mapEl = document.getElementById('map');
+  psClearInsets();
+  map.off('moveend', psLiveFollow);
+  const mapEl = printSaved.mapEl;             // kept here: rebuilding the pages takes it out of the page
   printSaved.parent.insertBefore(mapEl, printSaved.next);
   document.body.classList.remove('printing');
   document.getElementById('psPages').innerHTML = '';
@@ -2229,29 +2357,63 @@ function leavePrintSheet() {
 }
 window.addEventListener('beforeprint', () => {        // Ctrl+P without the preview: one page, as it is
   const mapPage = document.getElementById('mapPage');
-  if (map && !printSaved && mapPage && mapPage.classList.contains('active')) enterPrintSheet(true);
+  if (map && !printSaved && mapPage && mapPage.classList.contains('active')) {
+    try { enterPrintSheet(true); } catch (err) { psFail(err); }   // an error here must not stop the browser's print window
+  }
 });
-window.addEventListener('afterprint', () => { if (printSaved && printSaved.viaKeys) leavePrintSheet(); });
+window.addEventListener('beforeprint', () => { psPrinting = true; });
+window.addEventListener('afterprint', () => {
+  psPrinting = false;
+  // after the print window closes (not during it): page title back, Ctrl+P page closed
+  setTimeout(() => { psRestoreDocTitle(); if (printSaved && printSaved.viaKeys) leavePrintSheet(); }, 0);
+});
 
 /* Paper size: the sheet is the paper minus the margins, and @page asks the printer for the same paper */
 function setPrintPaper() {
-  const [w, h] = PS_PAPERS[PS_OPT.paper] || PS_PAPERS.a4;
-  const sheet = document.getElementById('printSheet');
+  let [w, h] = PS_PAPERS[PS_OPT.paper] || PS_PAPERS.a4;
+  if (PS_OPT.orient === 'portrait') [w, h] = [h, w];
+  const sheet = document.getElementById('printSheet'), portrait = PS_OPT.orient === 'portrait', k = psK();
+  sheet.classList.toggle('ps-portrait', portrait);
   sheet.style.setProperty('--pw', (w - 2 * PS_MARGIN) + 'mm');
-  sheet.style.setProperty('--ph', (h - 2 * PS_MARGIN - 1) + 'mm');
+  sheet.style.setProperty('--ph', (h - 2 * PS_MARGIN - 0.4) + 'mm');   // 0.4 mm less, so a page never spills onto a second sheet
+  // Header, logo, overview map and legend grow with the paper (A3 = 1.41 × A4), portrait a bit taller header as in A3P
+  sheet.style.setProperty('--k', k.toFixed(3));
+  sheet.style.setProperty('--hh', ((portrait ? 20 : 17) * k).toFixed(1) + 'mm');
+  sheet.style.setProperty('--lh', ((portrait ? 10.5 : 9.5) * k).toFixed(1) + 'mm');
+  sheet.style.setProperty('--iw', ((portrait ? 13 : 11) * k).toFixed(1) + 'mm');
+  sheet.style.setProperty('--lw', ((portrait ? 62 : 66) * k).toFixed(1) + 'mm');
   let css = document.getElementById('psPageCss');
   if (!css) { css = document.createElement('style'); css.id = 'psPageCss'; document.head.appendChild(css); }
-  css.textContent = '@media print{@page{size:' + w + 'mm ' + h + 'mm;margin:' + PS_MARGIN + 'mm}}';
+  // Paper of the print window different from the page (A3 page on an A4 printer, Letter …): the whole page is scaled
+  // to the paper (width of the paper = 100cqw, height = 100vh while printing), so nothing is cut and nothing is left white.
+  const pw = w - 2 * PS_MARGIN, ph = h - 2 * PS_MARGIN - 0.4;
+  css.textContent = '@media print{@page{size:' + w + 'mm ' + h + 'mm;margin:' + PS_MARGIN + 'mm}' +
+    'body.printing .ps-pages{container-type:inline-size;width:100%}' +
+    'body.printing .ps-page{zoom:min(calc(100cqw / ' + pw + 'mm), calc(100vh / ' + ph + 'mm))}}';
+}
+function psK() {                              // size factor of the paper: 1 = A4, 1.41 = A3, ~0.98 = Letter
+  const [w, h] = PS_PAPERS[PS_OPT.paper] || PS_PAPERS.a4;
+  return Math.sqrt(w * h / (297 * 210));
 }
 
 /* Toolbar of the preview (not printed) */
 function renderPrintToolbar() {
   const n = psBatchSpecs().length;
   const papers = [['a4', 'A4'], ['letter', 'Letter'], ['a3', 'A3']];
+  const txt = (k, lbl) => '<label class="ps-opt ps-txt">' + escapeHtml(t(lbl)) + ' <input type="text" data-ps="' + k + '" value="' + escapeHtml(PS_OPT[k] || '') +
+                          '" placeholder="' + escapeHtml(t('psAutoPh')) + '"></label>';
+  const box = (k, lbl) => '<label class="ps-opt"><input type="checkbox" data-ps="' + k + '"' + (PS_OPT[k] ? ' checked' : '') + '> ' + escapeHtml(t(lbl)) + '</label>';
   document.getElementById('psToolbar').innerHTML =
     '<label class="ps-opt">' + escapeHtml(t('psPaper')) + ' <select data-ps="paper">' + papers.map(([k, v]) =>
-      '<option value="' + k + '"' + (PS_OPT.paper === k ? ' selected' : '') + '>' + v + ' · ' + escapeHtml(t('psLandscape')) + '</option>').join('') + '</select></label>' +
-    '<label class="ps-opt"><input type="checkbox" data-ps="names"' + (PS_OPT.names ? ' checked' : '') + '> ' + escapeHtml(t('psNames')) + '</label>' +
+      '<option value="' + k + '"' + (PS_OPT.paper === k ? ' selected' : '') + '>' + v + '</option>').join('') + '</select>' +
+      ' <select data-ps="orient">' + [['landscape', t('psLandscape')], ['portrait', t('psPortrait')]].map(([k, v]) =>
+      '<option value="' + k + '"' + (PS_OPT.orient === k ? ' selected' : '') + '>' + escapeHtml(v) + '</option>').join('') + '</select></label>' +
+    '<label class="ps-opt">' + escapeHtml(t('printBaseL')) + ' <select data-ps="basemap">' + ['street', 'light', 'terrain', 'satellite', 'none'].map(k =>
+      '<option value="' + k + '"' + (currentBasemap === k ? ' selected' : '') + '>' + escapeHtml(t({ street: 'bmStreet', light: 'bmLight', terrain: 'bmTerrain', satellite: 'bmSatellite', none: 'bmNone' }[k])) + '</option>').join('') + '</select></label>' +
+    '<label class="ps-opt">' + escapeHtml(t('psLang')) + ' <select data-ps="lang">' + [['en', 'English'], ['es', 'Español'], ['zh', '中文']].map(([k, v]) =>
+      '<option value="' + k + '"' + (PS_OPT.lang === k ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></label>' +
+    txt('title', 'psTitleL') + txt('sub', 'psSubL') +
+    box('names', 'psNames') + box('inset', 'psInset') + box('top', 'psTop') +
     '<span class="ps-seg">' +
       '<label><input type="radio" name="psScope" value="cur"' + (PS_OPT.batch ? '' : ' checked') + '> ' + escapeHtml(t('psCurrent')) + '</label>' +
       '<label' + (n < 2 ? ' class="dis" title="' + escapeHtml(t('psBatchNone')) + '"' : '') + '><input type="radio" name="psScope" value="batch"' +
@@ -2260,7 +2422,16 @@ function renderPrintToolbar() {
     '<span class="ps-status" id="psStatus"></span><span class="ps-grow"></span>' +
     '<button type="button" class="ps-go" data-ps="print">' + ICON_PRINT + escapeHtml(t('psPrint')) + '</button>' +
     '<button type="button" class="ps-close" data-ps="close">' + escapeHtml(t('psClose')) + '</button>' +
-    '<div class="ps-tip">' + escapeHtml(t('psTip')) + '</div>';
+    '<span class="ps-help" title="' + escapeHtml(t('psEditTip') + '\n\n' + t('psLblTip') + '\n\n' + t('psTip')) + '">?</span>';
+  // Vertical tool bar for the moved names (right side of the preview)
+  const svg = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const tb = (k, tip, icon, off) => '<button type="button" data-ps="' + k + '" title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"' + (off ? ' disabled' : '') + '>' + svg(icon) + '</button>';
+  document.getElementById('psTools').innerHTML =
+    tb('lblundo', t('psLblUndo') + ' (Ctrl+Z)', '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>', !psUndo.length) +
+    tb('lblredo', t('psLblRedo') + ' (Ctrl+Y)', '<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>', !psRedo.length) +
+    '<hr>' +
+    tb('lblsave', t('psLblSave') + ' – ' + t('psLblSaveTip'), '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>') +
+    tb('lblreset', t('psLblReset') + ' – ' + t('psLblTip'), '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>');
 }
 function psStatus(txt, busy) {
   const el = document.getElementById('psStatus');
@@ -2271,32 +2442,52 @@ document.addEventListener('change', e => {
   if (!e.target.closest || !e.target.closest('#psToolbar')) return;
   const k = e.target.dataset.ps;
   if (k === 'paper') { PS_OPT.paper = e.target.value; buildPrintPages(); }
+  else if (k === 'orient') { PS_OPT.orient = e.target.value; buildPrintPages(); }
+  else if (k === 'lang') { PS_OPT.lang = e.target.value; buildPrintPages(); }
+  else if (k === 'basemap') {                // same basemap as the map page (the menu in the top bar follows)
+    switchBasemap(e.target.value);
+    document.getElementById('basemap').value = e.target.value;
+    buildPrintPages();                       // waits for the new tiles; footer shows the new basemap
+  }
+  else if (k === 'inset') { PS_OPT.inset = e.target.checked; buildPrintPages(); }
+  else if (k === 'top') { PS_OPT.top = e.target.checked; buildPrintPages(); }
   else if (k === 'names') {
     PS_OPT.names = e.target.checked;
     if (PS_OPT.batch) buildPrintPages(); else { psAddLabels(); psStatus(psLabelInfo(), false); }
   } else if (e.target.name === 'psScope') { PS_OPT.batch = e.target.value === 'batch'; buildPrintPages(); }
 });
 document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('#psToolbar button[data-ps]');
+  const b = e.target.closest && e.target.closest('#psToolbar button[data-ps], #psTools button[data-ps]');
   if (!b) return;
   if (b.dataset.ps === 'close') leavePrintSheet();
-  else if (b.dataset.ps === 'print' && !document.getElementById('psToolbar').classList.contains('busy')) window.print();
+  else if (b.dataset.ps === 'lblreset') psResetLabels();
+  else if (b.dataset.ps === 'lblundo') psUndoLabel(false);
+  else if (b.dataset.ps === 'lblredo') psUndoLabel(true);
+  else if (b.dataset.ps === 'lblsave') psSaveLabels();
+  else if (b.dataset.ps === 'print' && !document.getElementById('psToolbar').classList.contains('busy')) { psSetDocTitle(); setTimeout(() => window.print(), 50); }
 });
 
 /* ----- Pages ----- */
 // One page with the live map in its frame
 function psSinglePage() {
-  const box = document.getElementById('psPages');
-  box.innerHTML = psPageHtml({ kind: 'current' });
-  box.querySelector('.ps-map').appendChild(document.getElementById('map'));
+  const box = document.getElementById('psPages'), mapEl = printSaved.mapEl;   // taken before the old page is replaced
+  psClearInsets();
+  box.innerHTML = psL(() => psPageHtml({ kind: 'current' }));
+  psFitAll();                                 // titles first: a two-line title makes the map frame smaller
+  const frame = box.querySelector('.ps-map');
+  frame.appendChild(mapEl);
   psFit();
   psAddLabels();
+  psInset(frame, map.getBounds(), true);
+  psLiveFrame = frame;                        // scale bar follows when the map is moved or zoomed in the preview
+  psL(() => psScale(frame));
 }
 function psFit() {
   map.invalidateSize({ animate: false });
   map.fitBounds(printSaved.bounds, { animate: false });
 }
-async function buildPrintPages() {
+function buildPrintPages() { return buildPrintPagesRaw().catch(psFail); }   // every caller: errors are shown, not lost
+async function buildPrintPagesRaw() {
   if (!printSaved) return;
   const run = ++psRun;
   setPrintPaper();
@@ -2308,29 +2499,36 @@ async function buildPrintPages() {
     psStatus('', true);
     psSinglePage();
     await psSettle();
-    if (run === psRun) psStatus(psLabelInfo(), false);
+    if (run === psRun) { psFitAll(); psStatus(psLabelInfo(), false); }   // fit again once Lato has loaded
     return;
   }
   // Batch: the live map is drawn off-screen in the stage (same size as a frame), each page gets a picture of it
   renderPrintToolbar();
-  const box = document.getElementById('psPages'), stage = document.getElementById('psStage'), mapEl = document.getElementById('map');
-  box.innerHTML = specs.map(psPageHtml).join('');
+  const box = document.getElementById('psPages'), stage = document.getElementById('psStage'), mapEl = printSaved.mapEl;
+  psClearInsets();
+  box.innerHTML = psL(() => specs.map(psPageHtml).join(''));
+  psFitAll();
   const frames = box.querySelectorAll('.ps-map');
-  stage.style.width = frames[0].clientWidth + 'px';
-  stage.style.height = frames[0].clientHeight + 'px';
+  stage.style.width = frames[0].clientWidth / psK() + 'px';    // map drawn at A4 size, the picture is enlarged on the page
+  stage.style.height = frames[0].clientHeight / psK() + 'px';
   stage.appendChild(mapEl);
   psFit();
   for (let i = 0; i < specs.length; i++) {
     if (run !== psRun) return;
     psStatus(t('psBusyN', { i: i + 1, n: specs.length }), true);
     psApply(specs[i]);
-    psAddLabels();
+    psLabelFrame = frames[i];                 // names keep clear of this page's legend and table
+    psAddLabels(specs[i]);
+    psLabelFrame = null;
     await psSettle();
     if (run !== psRun) return;
     frames[i].appendChild(psSnapshot(mapEl));
+    psL(() => psScale(frames[i]));            // same size and view as the stage map: same scale
+    psInset(frames[i], map.getBounds(), false);
   }
   psRestoreState();
   psRemoveLabels();
+  psFitAll();
   psStatus(t('psReady', { n: specs.length }), false);
 }
 // Wait for the map to draw and the basemap tiles to arrive (at most ~3 s)
@@ -2417,10 +2615,185 @@ function psRestoreState() {
 function psLabelInfo() {                     // shown in the toolbar, e.g. "21 area names"
   return PS_OPT.names ? t('psNamesN', { n: psLabels ? psLabels.getLayers().length : 0 }) : '';
 }
+function psRankMap(spec) {                       // the PS_TOP_N areas with the highest value: name -> rank
+  const m = new Map(), d = psRankData(spec || { kind: 'current' });
+  if (!d) return m;
+  d.rows.filter(r => r.v !== null && isFinite(r.v) && r.v > 0).sort((a, b) => b.v - a.v).slice(0, PS_TOP_N)
+    .forEach((r, i) => { if (!m.has(r.name)) m.set(r.name, i + 1); });
+  return m;
+}
 function psRemoveLabels() {
   if (psLabels) { map.removeLayer(psLabels); psLabels = null; }
 }
-function psAddLabels() {
+/* Boxes (screen pixels) of the service point icons on the map: area names keep out of them */
+function pointIconBoxes(pad) {
+  const out = [];
+  if (!map) return out;
+  Object.keys(pointLayers).forEach(k => {
+    const st = pointState[k];
+    if (!st.on || !st.layer || !map.hasLayer(st.layer)) return;
+    st.layer.eachLayer(m => {
+      if (!m.getLatLng) return;
+      const p = map.latLngToContainerPoint(m.getLatLng()), r = (m._iconPx || 12) / 2 + pad;
+      out.push([p.x - r, p.y - r, p.x + r, p.y + r]);
+    });
+  });
+  return out;
+}
+/* Where a w × h px label for point p can go without covering an icon or another label:
+   on the point, then just below, above, right, left, then a bit further down / up.
+   null = nowhere free; force = true takes the place that covers least (ranked areas must keep their name). */
+function placeLabel(p, w, h, boxes, force, f, size) {
+  const hits = b => boxes.filter(q => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]).length;
+  const d = h + 3, sx = w / 2 + 10;
+  const tries = [[0, 0], [0, d], [0, -d], [sx, 0], [-sx, 0], [sx, d], [-sx, d], [sx, -d], [-sx, -d], [0, 2 * d], [0, -2 * d], [0, 3 * d], [0, -3 * d]];
+  // A free place inside the area is best, then a free place next to it; forced: the place that covers least
+  const inside = c => !f || !map || !/Polygon/.test((f.geometry || {}).type) ||
+                      (ll => inArea([ll.lng, ll.lat], f))(map.containerPointToLatLng(c));
+  let free = null, best = null, least = Infinity;
+  for (const [dx, dy] of tries) {
+    const c = [p.x + dx, p.y + dy], b = [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2];
+    if (size && (b[0] < 2 || b[1] < 2 || b[2] > size.x - 2 || b[3] > size.y - 2)) continue;   // stays on the map
+    const n = hits(b);
+    if (!n && inside(c)) return { c: c, b: b };
+    if (!n && !free) free = { c: c, b: b };
+    if (n < least) { least = n; best = { c: c, b: b }; }
+  }
+  return free || (force ? best : null);
+}
+/* Boxes (pixels of the map) of what lies on top of the map on the page: legend, ranking table, overview map, scale bar */
+let psLabelFrame = null;    // frame of the page being labelled (batch: set for each page)
+function psOverlayBoxes(frame) {
+  const out = [];
+  if (!frame) return out;
+  const r0 = frame.getBoundingClientRect(), k = psK();            // page pixels -> map pixels (the map is enlarged by k)
+  frame.querySelectorAll('.ps-left .ps-card, .ps-inset, .ps-scale').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) out.push([(r.left - r0.left) / k - 4, (r.top - r0.top) / k - 4, (r.right - r0.left) / k + 4, (r.bottom - r0.top) / k + 4]);
+  });
+  return out;
+}
+/* ----- Area names moved by hand in the print preview -----
+   Drag a name to move it, double-click it to put it back. The move is kept per page (and per name)
+   while the page is open, also when the pages are made again (paper, language, names …).
+   "Reset names" in the toolbar puts every name back. */
+const PS_LABEL_KEY = 'atlasLabelPos';      // saved moves (browser storage), loaded again next time
+const PS_LABEL_OFF = (() => { try { return JSON.parse(localStorage.getItem(PS_LABEL_KEY) || '{}') || {}; } catch (e) { return {}; } })();
+const psUndo = [], psRedo = [];             // each step: [[id, before, after], …]  (before / after: [dx, dy] or null)
+function psSetOff(id, v) { if (v) PS_LABEL_OFF[id] = v; else delete PS_LABEL_OFF[id]; }
+function psApplyOff(id) {                   // move the name on the pages to its stored place
+  document.querySelectorAll('#psPages .ps-label [data-lbl]').forEach(sp => {
+    if (sp.dataset.lbl !== id) return;
+    const v = PS_LABEL_OFF[id];
+    sp.style.left = v ? v[0] + 'px' : '';
+    sp.style.top = v ? v[1] + 'px' : '';
+    sp.classList.toggle('moved', !!v);
+  });
+}
+function psStep(changes) {                  // a new move: can be undone, clears redo
+  changes = changes.filter(([, a, b]) => JSON.stringify(a) !== JSON.stringify(b));
+  if (!changes.length) return;
+  psUndo.push(changes);
+  psRedo.length = 0;
+  psLabelButtons();
+}
+function psUndoLabel(redo) {
+  const from = redo ? psRedo : psUndo, to = redo ? psUndo : psRedo;
+  const step = from.pop();
+  if (!step) return;
+  step.forEach(([id, before, after]) => { psSetOff(id, redo ? after : before); psApplyOff(id); });
+  to.push(step);
+  psLabelButtons();
+}
+function psSaveLabels() {
+  try { localStorage.setItem(PS_LABEL_KEY, JSON.stringify(PS_LABEL_OFF)); psStatus(t('psLblSaved'), false); }
+  catch (e) { psStatus(t('psLblNoSave'), false); }
+}
+function psLabelButtons() {                 // undo / redo greyed out when there is nothing to undo / redo
+  const u = document.querySelector('#psTools [data-ps="lblundo"]'), r = document.querySelector('#psTools [data-ps="lblredo"]');
+  if (u) u.disabled = !psUndo.length;
+  if (r) r.disabled = !psRedo.length;
+}
+document.addEventListener('keydown', e => {  // Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) in the print preview, not while typing a title
+  if (!printSaved || !(e.ctrlKey || e.metaKey)) return;
+  if (e.target.closest && e.target.closest('input, select, textarea, [contenteditable="true"]')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); psUndoLabel(false); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); psUndoLabel(true); }
+});
+function psLabelSpan(id, name, inner, cls) {
+  const off = PS_LABEL_OFF[id], c = [cls, off ? 'moved' : ''].filter(Boolean).join(' ');
+  return '<span data-lbl="' + escapeHtml(id) + '"' + (c ? ' class="' + c + '"' : '') +
+         (off ? ' style="left:' + off[0] + 'px;top:' + off[1] + 'px"' : '') + '>' + inner + '</span>';
+}
+let psDrag = null;
+document.addEventListener('pointerdown', e => {
+  const sp = e.target.closest && e.target.closest('#psPages .ps-label [data-lbl]');
+  if (!sp || e.button !== 0) return;
+  e.preventDefault();
+  e.stopPropagation();                        // the map must not pan
+  psDrag = { sp: sp, x: e.clientX, y: e.clientY, l: parseFloat(sp.style.left) || 0, t: parseFloat(sp.style.top) || 0,
+             before: PS_LABEL_OFF[sp.dataset.lbl] || null };
+}, true);
+document.addEventListener('pointermove', e => {
+  if (!psDrag) return;
+  e.preventDefault();
+  const k = psK();                            // the map is enlarged by k on bigger paper
+  psDrag.sp.style.left = Math.round(psDrag.l + (e.clientX - psDrag.x) / k) + 'px';
+  psDrag.sp.style.top = Math.round(psDrag.t + (e.clientY - psDrag.y) / k) + 'px';
+}, true);
+document.addEventListener('pointerup', () => {
+  if (!psDrag) return;
+  const sp = psDrag.sp, id = sp.dataset.lbl, dx = parseFloat(sp.style.left) || 0, dy = parseFloat(sp.style.top) || 0;
+  psSetOff(id, dx || dy ? [dx, dy] : null);
+  psApplyOff(id);                             // same name on every page that shows it
+  psStep([[id, psDrag.before, PS_LABEL_OFF[id] || null]]);
+  psDrag = null;
+}, true);
+document.addEventListener('dblclick', e => {  // double-click a name: back to its automatic place
+  const sp = e.target.closest && e.target.closest('#psPages .ps-label [data-lbl]');
+  if (!sp) return;
+  e.preventDefault();
+  e.stopPropagation();                        // no map zoom
+  const id = sp.dataset.lbl, before = PS_LABEL_OFF[id] || null;
+  psSetOff(id, null);
+  psApplyOff(id);
+  psStep([[id, before, null]]);
+}, true);
+function psResetLabels() {                  // every name back to its automatic place (can be undone)
+  const step = Object.keys(PS_LABEL_OFF).map(id => [id, PS_LABEL_OFF[id], null]);
+  step.forEach(([id]) => { psSetOff(id, null); psApplyOff(id); });
+  psStep(step);
+}
+/* Place of a rank number, in this order:
+   1. inside the area, clear of icons and other names (on the point, then a few pixels around it)
+   2. inside the area, clear of the icons (may touch another name)
+   3. area too small (covered by an icon): just next to it, clear of the icons, so the number is still seen */
+function psBadgePlace(p, boxes, f, icons) {
+  const r = 7, hit = (c, list) => list.some(q => c[0] - r < q[2] && c[0] + r > q[0] && c[1] - r < q[3] && c[1] + r > q[1]);
+  const inside = c => !f || !/Polygon/.test((f.geometry || {}).type) || (ll => inArea([ll.lng, ll.lat], f))(map.containerPointToLatLng(c));
+  const ring = d => d ? [[0, d], [0, -d], [d, 0], [-d, 0], [d, d], [-d, d], [d, -d], [-d, -d]] : [[0, 0]];
+  const near = [0, 4, 8, 12, 16, 20, 26];
+  for (const d of near) for (const [dx, dy] of ring(d)) { const c = [p.x + dx, p.y + dy]; if (inside(c) && !hit(c, boxes)) return c; }
+  for (const d of near) for (const [dx, dy] of ring(d)) { const c = [p.x + dx, p.y + dy]; if (inside(c) && !hit(c, icons)) return c; }
+  for (const d of [12, 16, 20, 26, 32]) for (const [dx, dy] of ring(d)) { const c = [p.x + dx, p.y + dy]; if (!hit(c, icons)) return c; }
+  return [p.x, p.y];
+}
+/* Place of a name next to its number: right, left, below, above; the freest one if all are taken */
+function psNextTo(bp, bs, w, h, boxes, size) {
+  const g = bs / 2 + 2;
+  const tries = [[g + w / 2, 0], [-g - w / 2, 0], [0, g + h / 2], [0, -g - h / 2], [g + w / 2, h], [g + w / 2, -h], [-g - w / 2, h], [-g - w / 2, -h]];
+  let best = null, least = Infinity;
+  for (const [dx, dy] of tries) {
+    const c = [bp[0] + dx, bp[1] + dy], b = [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2];
+    const out = b[0] < 2 || b[1] < 2 || b[2] > size.x - 2 || b[3] > size.y - 2;
+    const n = boxes.filter(q => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]).length + (out ? 100 : 0);
+    if (!n) return { c: c, b: b };
+    if (n < least) { least = n; best = { c: c, b: b }; }
+  }
+  return best;
+}
+function psAddLabels(spec) {
   psRemoveLabels();
   if (!PS_OPT.names || !map) return;
   if (!map.getPane('psLabelPane')) {
@@ -2434,36 +2807,193 @@ function psAddLabels() {
   if (!src.length) src = take(selLayer);
   if (!src.length) src = take(childLayer);
   if (!src.length) src = take(boundaryLayer);
-  const size = map.getSize(), boxes = [];
+  const rank = psRankMap(spec);                  // name -> 1, 2, 3 … (same order as the ranking table)
+  const frame = psLabelFrame || map.getContainer().closest('.ps-map');
+  const icons = pointIconBoxes(3), size = map.getSize(), boxes = icons.concat(psOverlayBoxes(frame));   // names go around the icons, legend, table, overview map
   const items = src.map(l => {
     const b = l.getBounds(), a = map.latLngToContainerPoint(b.getNorthWest()), c = map.latLngToContainerPoint(b.getSouthEast());
     const f = l.feature;
-    return { f: f, name: String(f._name || featName(f) || '').trim(), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) };
-  }).filter(o => o.name && o.name !== '—' && (o.w >= 22 || o.h >= 22)).sort((x, y) => y.w * y.h - x.w * x.h);
+    const name = String(f._name || featName(f) || '').trim();
+    return { f: f, name: name, rk: rank.get(featName(f)) || rank.get(name) || 0, w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) };
+  }).filter(o => o.name && o.name !== '—' && (o.rk || o.w >= 22 || o.h >= 22))
+    .sort((x, y) => ((x.rk || 1e9) - (y.rk || 1e9)) || (y.w * y.h - x.w * x.h));   // ranked areas first, so they are never left out
   psLabels = L.layerGroup();
   items.slice(0, 500).forEach(o => {
     const pt = featurePoint(o.f);
     if (!pt) return;
     const ll = L.latLng(pt[1], pt[0]), p = map.latLngToContainerPoint(ll);
     if (p.x < 4 || p.y < 4 || p.x > size.x - 4 || p.y > size.y - 4) return;
-    const w = o.name.length * 5.6 + 6, h = 12;
-    const box = [p.x - w / 2, p.y - h / 2, p.x + w / 2, p.y + h / 2];
-    if (boxes.some(q => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) return;
-    boxes.push(box);
-    L.marker(ll, { pane: 'psLabelPane', interactive: false, keyboard: false,
-      icon: L.divIcon({ className: 'ps-label', html: '<span>' + escapeHtml(o.name) + '</span>', iconSize: [0, 0] }) }).addTo(psLabels);
+    const id = (spec ? psSpecKey(spec) : 'current') + '|' + o.name, w = o.name.length * 5.6 + 6, h = 12;
+    const put = (c, html) => L.marker(map.containerPointToLatLng(c), { pane: 'psLabelPane', interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'ps-label', html: html, iconSize: [0, 0] }) }).addTo(psLabels);
+    if (!o.rk) {                              // other areas: the name only, where there is room
+      const pl = placeLabel(p, w, h, boxes, false, o.f, size);
+      if (!pl) return;
+      boxes.push(pl.b);
+      put(pl.c, psLabelSpan(id, o.name, escapeHtml(o.name)));
+      return;
+    }
+    // Ranked areas: the number always INSIDE its area (moved a little inside the area if an icon is there),
+    // the name right next to the number (right, left, below or above), never left out
+    const bp = psBadgePlace(p, boxes, o.f, icons), bs = 13;
+    boxes.push([bp[0] - bs / 2, bp[1] - bs / 2, bp[0] + bs / 2, bp[1] + bs / 2]);
+    const nl = psNextTo(bp, bs, w, h, boxes, size);
+    boxes.push(nl.b);
+    // One label anchored on the number: the number at 0,0 (inside the area), the name next to it; dragging moves both
+    const nx = Math.round(nl.c[0] - bp[0]), ny = Math.round(nl.c[1] - bp[1]);
+    put(bp, psLabelSpan(id, o.name, '<span class="rk" style="left:0;top:0"><em>' + o.rk + '</em></span>' +
+                                   '<span style="left:' + nx + 'px;top:' + ny + 'px">' + escapeHtml(o.name) + '</span>', 'grp'));
   });
   psLabels.addTo(map);
 }
 
-/* One page: header, map frame (filled later), legend, source */
+/* The pages are written in the language chosen in the toolbar (PS_OPT.lang), whatever the site language:
+   t(), fieldLabel(), valueLabel(), fmtNum() … all read currentLang, so it is switched while a page is written */
+function psL(fn) {
+  const old = currentLang;
+  currentLang = PS_OPT.lang || old;
+  try { return fn(); } finally { currentLang = old; }
+}
+
+/* Overview map, round, in the top right corner of a page (as in the templates): South America, Peru in UNHCR blue.
+   live = true: it follows the live map while the preview is open (single page). */
+let psLiveFrame = null;     // frame of the single page: its scale bar follows the live map
+function psInset(frame, bounds, live) {
+  const el = PS_OPT.inset && frame && frame.querySelector('.ps-inset');
+  if (!el || !window.L) return;
+  const m = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+                        boxZoom: false, keyboard: false, touchZoom: false, zoomSnap: 0.1, fadeAnimation: false, zoomAnimation: false, inertia: false });
+  L.tileLayer(BASEMAPS.light.url, { maxZoom: 16 }).addTo(m);
+  if (DEPT_DATA) L.geoJSON(DEPT_DATA, { interactive: false, renderer: L.canvas({ padding: 0 }),
+                                         style: () => ({ stroke: false, fillColor: '#0072bc', fillOpacity: 0.85 }) }).addTo(m);
+  const o = { m: m };                         // only South America with Peru in blue (no extent box)
+  psInsets.push(o);
+  if (live) psLiveInset = o;
+  psInsetSet(o, bounds);
+}
+function psInsetSet(o, b) {
+  let view = L.latLngBounds(PS_SA);
+  if (!view.contains(b)) view = view.extend(b);           // map zoomed out past South America: show all of it
+  o.m.invalidateSize({ animate: false });
+  o.m.fitBounds(view, { animate: false, padding: [4, 4] });
+}
+function psLiveFollow() {                     // single page: overview map and scale bar follow the map
+  if (!printSaved || psPrinting) return;
+  if (psLiveInset) psInsetSet(psLiveInset, map.getBounds());
+  if (psLiveFrame) psL(() => psScale(psLiveFrame));
+}
+function psClearInsets() {
+  psInsets.forEach(o => o.m.remove());
+  psInsets = [];
+  psLiveInset = null;
+  psLiveFrame = null;
+}
+
+/* Texts the user can type over. Order: text typed on that page > Title / Subtitle box of the toolbar (every page) > automatic.
+   The automatic text stays in data-auto: an emptied box gets it back. Author / contact (footer) are shared by all pages. */
+function psSpecKey(spec) {
+  return spec.kind === 'calc' ? 'calc|' + spec.id + '|' + spec.field : spec.kind === 'analysis' ? 'an|' + spec.row.id : 'current';
+}
+function psGlobalText(field) { return field === 'title' || field === 'sub' ? PS_OPT[field] || '' : ''; }
+function psEditable(key, field, auto, cls, tag) {
+  const own = PS_EDIT[key] && PS_EDIT[key][field], tg = tag || 'div';
+  return '<' + tg + ' class="' + cls + ' ps-edit" contenteditable="true" spellcheck="false" data-pskey="' + escapeHtml(key) + '" data-psf="' + field +
+         '" data-auto="' + escapeHtml(auto) + '">' + escapeHtml(own || psGlobalText(field) || auto) + '</' + tg + '>';
+}
+function psEditEl(e) { return e.target && e.target.closest ? e.target.closest('[data-psf]') : null; }
+function psSyncMeta(el, txt) {                // author / contact: same text on every page
+  if (el.dataset.pskey !== 'meta') return;
+  document.querySelectorAll('#psPages [data-pskey="meta"][data-psf="' + el.dataset.psf + '"]').forEach(o => { if (o !== el) o.textContent = txt || o.dataset.auto; });
+}
+document.addEventListener('input', e => {
+  // Title / Subtitle boxes of the toolbar: every page that has no text of its own
+  const tb = e.target && e.target.closest && e.target.closest('#psToolbar [data-ps]');
+  if (tb && (tb.dataset.ps === 'title' || tb.dataset.ps === 'sub')) {
+    const f = tb.dataset.ps;
+    PS_OPT[f] = tb.value.trim();
+    document.querySelectorAll('#psPages [data-psf="' + f + '"]').forEach(el => {
+      if ((PS_EDIT[el.dataset.pskey] || {})[f]) return;
+      el.textContent = PS_OPT[f] || el.dataset.auto;
+      psFitEl(el);
+    });
+    return;
+  }
+  const el = psEditEl(e);
+  if (!el) return;
+  const txt = el.innerText.trim();
+  (PS_EDIT[el.dataset.pskey] = PS_EDIT[el.dataset.pskey] || {})[el.dataset.psf] = txt;
+  psSyncMeta(el, txt);
+  psFitEl(el);                                // font size follows while typing
+});
+document.addEventListener('focusout', e => {
+  const el = psEditEl(e);
+  if (!el) return;
+  const txt = el.innerText.trim();
+  if (!txt || txt === el.dataset.auto) {      // empty (or unchanged): back to the toolbar text or the automatic text
+    if (PS_EDIT[el.dataset.pskey]) delete PS_EDIT[el.dataset.pskey][el.dataset.psf];
+    el.textContent = psGlobalText(el.dataset.psf) || el.dataset.auto;
+    psSyncMeta(el, '');
+  }
+  el.scrollLeft = 0;
+  psFitEl(el);
+});
+document.addEventListener('keydown', e => {
+  const el = psEditEl(e);
+  if (!el) return;
+  if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); el.blur(); }
+});
+document.addEventListener('paste', e => {             // paste as plain text, on one line
+  const el = psEditEl(e);
+  if (!el) return;
+  e.preventDefault();
+  const txt = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+  document.execCommand('insertText', false, txt);
+});
+
+/* ----- Dates: header "27 - Oct - 2026" (as in the templates), footer "27 Oct 2026" ----- */
+const PS_MONTHS = { en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] };
 function psDate() {
   const now = new Date();
   return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 }
+function psDateParts(sep) {
+  const d = new Date();
+  if (currentLang === 'zh') return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  return [String(d.getDate()).padStart(2, '0'), (PS_MONTHS[currentLang] || PS_MONTHS.en)[d.getMonth()], d.getFullYear()].join(sep);
+}
+/* Date at the top right of the page, always "27 - October - 2026" (Spanish page: "27 - octubre - 2026"; Chinese page uses the
+   English month too). The element is marked translate="no", so a browser translation cannot turn it into "October 27, 2026". */
+const PS_MONTHS_LONG = { en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                         es: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'] };
+function psDateHead() {
+  const d = new Date();
+  return d.getDate() + ' - ' + (PS_MONTHS_LONG[currentLang] || PS_MONTHS_LONG.en)[d.getMonth()] + ' - ' + d.getFullYear();
+}
+function psDatePrint() { return psDateParts(' '); }
+
+function psAutoHeading() { return t('peru') + ' · ' + t(currentTopic ? 'topic_' + currentTopic : 'mapTitleDefault'); }
+/* Short subtitle: what is shown and the years, e.g. "Venezuelan population × Flood risk · 2026–2027" */
+function psShortSub(spec, th) {
+  if (psSubject(spec) && psSubject(spec).flt) {
+    const res = FLT.result, a = fltLayerById(FLT.pop), b = fltLayerById(FLT.risk);
+    const yrs = [...new Set([a && a.year, b && b.year].filter(Boolean).map(String))].join('–');
+    return fieldLabel(res.popField) + ' × ' + fieldLabel(res.riskField) + (yrs ? ' · ' + yrs : '');
+  }
+  return (th && th.source) || psAutoSub();
+}
+function psAutoSub() { return currentLevel ? t('viewingLevel', { level: t('level_' + currentLevel) }) : t('mapSub'); }
 function psCurrentCalc() {                    // the indicator coloured on the map now, if any
   if (!(selHitLayer && selHitLayer.getLayers().length && SEL.mapCard && CALC[SEL.mapCard])) return null;
   return { kind: 'calc', id: SEL.mapCard, field: resultMapField(CALC[SEL.mapCard]) };
+}
+/* What a page is about: the filter result, an indicator of the selection results, or one analysis layer */
+function psSubject(spec) {
+  if (spec.kind === 'current' && !psCurrentCalc() && fltShown()) return { flt: true };
+  const cs = spec.kind === 'calc' ? spec : spec.kind === 'current' ? psCurrentCalc() : null;
+  if (cs) return { calc: cs };
+  const row = spec.kind === 'analysis' ? spec.row : spec.kind === 'current' && ANALYSIS_ROWS.filter(r => r.on).length === 1 ? ANALYSIS_ROWS.find(r => r.on) : null;
+  return row ? { row: row } : null;
 }
 function psTheme(spec) {                      // title of the page: what the colours mean
   if (spec.kind === 'current' && !psCurrentCalc() && fltShown()) return { title: fltHeadText(FLT.result), source: fltSourceText() };
@@ -2480,103 +3010,247 @@ function psTheme(spec) {                      // title of the page: what the col
   }
   return null;
 }
-function psPageHtml(spec) {
-  const d = psDate(), th = psTheme(spec);
-  const sub = [th && th.source, document.getElementById('mapSubheading').textContent,
-               SEL.items && SEL.items.length ? t('printSelectedN', { n: SEL.items.length }) : ''].filter(Boolean).join('  ·  ');
-  const attr = document.querySelector('#map .leaflet-control-attribution');
-  const base = attr ? attr.textContent.replace(/^[\s\S]*?Leaflet\s*\|\s*/, '').trim() : '';
-  return '<div class="ps-page">' +
-    '<div class="ps-head"><img src="assets/img/acnur_logo.png" alt="UNHCR ACNUR" class="ps-logo">' +
-      '<div class="ps-titles"><div class="ps-heading">' + escapeHtml(th ? th.title : document.getElementById('mapHeading').textContent) + '</div>' +
-      '<div class="ps-sub">' + escapeHtml(sub) + '</div></div>' +
-      '<div class="ps-meta"><b>' + escapeHtml('UNHCR Peru · ' + t('authTitle')) + '</b><span>' + d + '</span></div></div>' +
-    '<div class="ps-map">' + PS_NORTH + '</div>' +
-    '<div class="ps-bottom">' +
-      '<div class="ps-legendbox"><div class="ps-ltitle">' + escapeHtml(t('printLegend')) + '</div><div class="ps-legend">' + psLegend(spec) + '</div></div>' +
-      '<div class="ps-info"><dl>' +
-        '<dt>' + escapeHtml(t('printSrcL')) + '</dt><dd>' + escapeHtml(t('printSrcV')) + '</dd>' +
-        '<dt>' + escapeHtml(t('printBaseL')) + '</dt><dd>' + escapeHtml(base || '—') + '</dd>' +
-        '<dt>' + escapeHtml(t('printDateL')) + '</dt><dd>' + d + '</dd></dl>' +
-        '<p class="ps-disc">' + escapeHtml(t('printDisclaimer')) + '</p></div>' +
-    '</div></div>';
+
+/* ----- Footer data: sources, basemap, file name ----- */
+function psSources() {                        // INEI (boundaries, census) · CENEPRED (risk layers) · UNHCR
+  const src = ['INEI'];
+  const used = ANALYSIS_ROWS.filter(r => r.on).map(rowVersion)
+    .concat(Object.keys(CALC).filter(id => CALC[id].on && (CALC[id].fields || []).length).map(id => ANALYSIS_LAYERS.find(l => l.id === id)).filter(Boolean))
+    .concat(fltShown() ? [fltLayerById(FLT.pop), fltLayerById(FLT.risk)].filter(Boolean) : []);
+  if (used.some(l => l.topic === 'emergency')) src.push('CENEPRED');
+  src.push('UNHCR');
+  return src.join(', ');
 }
+function psBasemapName() {
+  const k = { street: 'bmStreet', light: 'bmLight', terrain: 'bmTerrain', satellite: 'bmSatellite', none: 'bmNone' }[currentBasemap];
+  return k ? t(k) : 'Esri';
+}
+function psFileName() {                       // e.g. A4L_UNHCR_PERU_atlas_20261027 (P = portrait, L = landscape)
+  const p = PS_OPT.paper === 'letter' ? 'LTR' : PS_OPT.paper.toUpperCase();
+  return p + (PS_OPT.orient === 'portrait' ? 'P' : 'L') + '_UNHCR_PERU_atlas_' + psDate().replace(/-/g, '');
+}
+let psTitleBackup = null;                     // the browser uses the page title as the name of the saved PDF
+function psSetDocTitle() { if (psTitleBackup === null) psTitleBackup = document.title; document.title = psFileName(); }
+function psRestoreDocTitle() { if (psTitleBackup !== null) { document.title = psTitleBackup; psTitleBackup = null; } }
+const PS_CONTACT = 'salazart@unhcr.org';      // contact in the footer (click it on the page to change it)
+
+/* One page: blue band (logo, title, subtitle, date), map frame (filled later) with round overview map,
+   ranking table + legend (bottom left) and scale bar (bottom right), blue footer with disclaimer and print data */
+function psPageHtml(spec) {
+  const th = psTheme(spec), key = psSpecKey(spec);
+  const autoTitle = th ? th.title : psAutoHeading();
+  const autoSub = psShortSub(spec, th);
+  const sep = currentLang === 'zh' ? '：' : ': ';
+  const meta = (lbl, html) => '<span><b>' + escapeHtml(t(lbl) + sep) + '</b>' + html + '</span>';
+  return '<div class="ps-page" lang="' + (currentLang === 'zh' ? 'zh-CN' : currentLang) + '">' +
+    '<div class="ps-head"><img src="assets/img/acnur_logo.png" alt="UNHCR ACNUR" class="ps-logo">' +
+      '<div class="ps-titles">' + psEditable(key, 'title', autoTitle, 'ps-heading') + psEditable(key, 'sub', autoSub, 'ps-sub') + '</div>' +
+      '<div class="ps-date notranslate" translate="no">' + escapeHtml(psDateHead()) + '</div></div>' +
+    '<div class="ps-map">' + (PS_OPT.inset ? '<div class="ps-inset"></div>' : '') +
+      '<div class="ps-left">' + psRankHtml(spec) + '<div class="ps-card ps-legend">' + psLegend(spec) + '</div></div>' +
+      '<div class="ps-scale"></div></div>' +
+    '<div class="ps-foot"><div class="ps-disc">' + escapeHtml(t('printDisclaimer')) + '</div><div class="ps-metaline">' +
+      meta('printPrinted', escapeHtml(psDatePrint())) + meta('printSources', escapeHtml(psSources())) + meta('printBaseL', escapeHtml(psBasemapName())) +
+      meta('printAuthor', psEditable('meta', 'author', t('printAuthorV'), 'ps-mv', 'span')) +
+      meta('printContact', psEditable('meta', 'contact', PS_CONTACT, 'ps-mv', 'span')) +
+      meta('printFile', escapeHtml(psFileName())) + '</div></div>' +
+  '</div>';
+}
+
+/* ----- Ranking table (as in the portrait template): the 4 areas with the highest value, their share of the total, subtotal ----- */
+const PS_TOP_N = 10;   // rows of the ranking table = areas numbered on the map
+function psRankData(spec) {
+  const sub = psSubject(spec);
+  if (!sub) return null;
+  if (sub.flt) {
+    const res = FLT.result, P = FLT.cache[FLT.pop];
+    return { unit: P ? calcUnit({ data: P.data }) : null, rows: res.list.map(x => ({ name: featName(x.f), v: x.v })) };
+  }
+  if (sub.calc) {
+    const c = CALC[sub.calc.id];
+    if (!c || !c.data || !c.info.numeric.includes(sub.calc.field)) return null;
+    const s = calcStats(c), it = s.items.find(x => x.field === sub.calc.field);
+    if (!it || it.pct || s.points) return null;               // percentages have no "share of total"
+    return { unit: calcUnit(c), rows: s.hits.map(f => ({ name: featName(f), v: toNum((f.properties || {})[sub.calc.field]) })) };
+  }
+  const st = analysisState[rowVersion(sub.row).id], r = st && st.result;
+  if (!r || r.kind !== 'numeric' || (st.field && /%/.test(fieldLabel(st.field)))) return null;
+  return { unit: st.info.kind === 'points' ? st.agg : calcUnit({ data: st.data }), rows: r.ranked.map(f => ({ name: r.name(f), v: r.value(f) })) };
+}
+function psRankHtml(spec) {
+  if (!PS_OPT.top) return '';
+  const d = psRankData(spec);
+  if (!d) return '';
+  const rows = d.rows.filter(r => r.v !== null && isFinite(r.v) && r.v > 0);
+  const total = rows.reduce((a, r) => a + r.v, 0);
+  if (rows.length < 2 || !total) return '';
+  const top = rows.slice().sort((a, b) => b.v - a.v).slice(0, PS_TOP_N);
+  const pc = v => fmtNum(v / total * 100, 1) + '%';
+  const unit = d.unit && I18N.en['rkUnit_' + d.unit] ? t('rkUnit_' + d.unit) : t('fltArea');
+  return '<div class="ps-card ps-rank"><table><thead><tr><th>' + escapeHtml(t('rkNo')) + '</th><th>' + escapeHtml(unit) + '</th><th>' + escapeHtml(t('rkShare')) + '</th></tr></thead><tbody>' +
+    top.map((r, i) => '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(r.name) + '</td><td>' + pc(r.v) + '</td></tr>').join('') +
+    '<tr class="sub"><td></td><td>' + escapeHtml(t('rkSub')) + '</td><td>' + pc(top.reduce((a, r) => a + r.v, 0)) + '</td></tr></tbody></table></div>';
+}
+
+/* Legend rows of an analysis layer, from its data (so they follow the page language, not the panel) */
+function psAnalysisRows(st, v, row, sw) {
+  const r = st.result;
+  if (!r) return '';
+  if (r.kind === 'numeric') {
+    return [0].concat(r.breaks).map((lo, i) => row(sw(classFill(i, r.breaks.length + 1)),
+             r.breaks[i] === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + ' – ' + fmtNum(r.breaks[i]))).join('') +
+           row(sw(ANALYSIS_NODATA), t('noDataLbl'));
+  }
+  if (r.kind === 'category') {
+    return [...r.counts.entries()].sort((a, b) => (severity(a[0]) - severity(b[0])) || (b[1] - a[1]))
+      .map(([c, n]) => row(sw(r.colors.get(c)), valueLabel(c))).join('');
+  }
+  return row(sw('#0072bc'), analysisName(v));
+}
+/* Legend made automatically from what is on the page, in the order of the templates:
+   Services (points, service radius) · the coloured theme (classes) · infrastructure · selected areas · Peru outline */
 function psLegend(spec) {
   const blocks = [];
   const row = (sym, txt) => '<div class="ps-lrow">' + sym + '<span>' + escapeHtml(txt) + '</span></div>';
   const sw = col => '<i style="background:' + col + '"></i>';
-  const block = (title, sub, rows, span2) => {      // span2: a block with long lines, two columns wide
-    const n = (rows.match(/class="ps-lrow"/g) || []).length;
-    blocks.push('<div class="ps-lblock' + (n > 5 ? ' wide' : '') + (span2 ? ' span2' : '') + '"><b>' + escapeHtml(title) + '</b>' +
-                (sub ? '<small>' + escapeHtml(sub) + '</small>' : '') + '<div class="ps-lrows">' + rows + '</div></div>');
+  const block = (title, sub, rows) => {
+    if (!rows) return;
+    blocks.push('<div class="ps-lblock">' + (title ? '<b>' + escapeHtml(title) + '</b>' : '') + (sub ? '<small>' + escapeHtml(sub) + '</small>' : '') + rows + '</div>');
   };
-  // 0. Filter analysis on the map: the risk level of the filtered areas (e.g. flood risk of the top 10 Venezuelan districts)
+  // 1. Services: ticked service points, then their service radius rings
+  let pts = '';
+  Object.keys(pointLayers).forEach(k => {
+    const st = pointState[k];
+    if (!st.on || !st.layer) return;
+    const ic = st.iconOk === false ? '<span class="pt-dot" style="background:' + POINT_COLORS[k] + '"></span>'
+                                   : '<img src="' + encodeURI(pointLayers[k].icon) + '" alt="">';
+    pts += row(ic, t('pt_' + k));
+  });
+  block(t('printServices'), '', pts);
+  const bufKeys = Object.keys(pointLayers).filter(bufferVisible);
+  let rings = bufKeys.map(k => row(bufSwatches(k), t('pt_' + k) + ' · ' + radiiText(k))).join('');
+  if (pointRing && map.hasLayer(pointRing.group)) {
+    const nm = (pointRing.m.feature && pointRing.m.feature._title) || t('pt_' + pointRing.key);
+    rings += row(bufSwatches(pointRing.key), nm + ' · ' + radiiText(pointRing.key));
+  }
+  block(t('bufLegend'), '', rings);
+  // 2. The coloured theme: filter result, indicator of the selection results, analysis layers
   if (spec.kind === 'current' && fltShown()) {
     const res = FLT.result;
-    block(fltLegendTitle(res), fltLegendSource(),
-      res.sum.filter(c => c.n).map(c => row(sw(c.color), c.label + (currentLang === 'zh' ? '：' : ': ') +
-        t('fltLegRow', { n: c.n, unit: c.n === 1 && currentLang !== 'zh' ? res.unit.replace(/s$/, '') : res.unit, field: fltFieldWord(res.popField), pop: fmtNum(c.pop) }))).join(''), true);
+    block(fieldLabel(res.riskField), '', res.sum.filter(c => c.n).map(c => row(sw(c.color), c.label)).join(''));
   }
-  // 1. Indicator of the selection results (from the data, so it works with the window folded or closed)
   const cs = spec.kind === 'calc' ? spec : spec.kind === 'current' ? psCurrentCalc() : null;
   if (cs) {
     const c = CALC[cs.id], s = calcStats(c), item = s.items.find(it => it.field === cs.field);
     const lay = calcLayers().find(l => l.id === cs.id);
     let rows = '';
     if (item && item.type === 'cat') {
-      item.cats.forEach(([v, n, col]) => { rows += row(sw(col), valueLabel(v) + '  (' + n + ')'); });
+      item.cats.forEach(([v, n, col]) => { rows += row(sw(col), valueLabel(v)); });
     } else if (item) {
-      const br = resultBreaks(c, s, cs.field), shift = ANALYSIS_COLORS.length - (br.length + 1);
+      const br = resultBreaks(c, s, cs.field), one = br.length ? '' : classRangeText(s.hits.map(f => toNum((f.properties || {})[cs.field])));
       [0].concat(br).forEach((lo, i) => {
-        rows += row(sw(ANALYSIS_COLORS[i + Math.max(0, shift)]), br[i] === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + ' – ' + fmtNum(br[i]));
+        rows += row(sw(classFill(i, br.length + 1)), one || (br[i] === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + ' – ' + fmtNum(br[i])));
       });
     }
-    if (item) block(item.label, lay ? analysisName(lay) + ' · ' + lay.year : '', rows);
+    if (item) block(item.label, '', rows);
   }
-  // 2. Outline of the selected areas
-  if (SEL.items && SEL.items.length) {
-    block(t('printSelected'), '', row('<i class="ps-line" style="border-color:#173b59"></i>', t('printSelectedN', { n: SEL.items.length })));
-  }
-  // 3. Analysis layers on this page (their legend from the left panel)
   const rows3 = spec.kind === 'analysis' ? [spec.row] : spec.kind === 'current' ? ANALYSIS_ROWS.filter(r => r.on) : [];
   rows3.forEach(r => {
     const v = rowVersion(r), st = analysisState[v.id] || {};
-    const wrap = document.getElementById('an_row_' + r.id);
-    const leg = wrap && wrap.parentNode.querySelector('.an-legend');
-    let rows = '';
-    if (leg) leg.querySelectorAll('.an-leg').forEach(x => {
-      const i = x.querySelector('i'), sp = x.querySelector('span');
-      rows += row(i ? i.outerHTML : '', sp ? sp.textContent : '');
-    });
-    block(st.field ? fieldLabel(st.field) : analysisName(v), (st.field ? analysisName(v) + ' · ' : '') + v.year, rows);
-    const circ = leg && leg.querySelector('.an-circ svg');      // proportional circles: their own block with the sizes
-    if (circ && st.result && st.result.circ) block(fieldLabel(st.result.circ.field), t('circHint'), '<div style="grid-column:1/-1">' + circ.outerHTML + '</div>');
+    block(st.field ? fieldLabel(st.field) : analysisName(v), '', psAnalysisRows(st, v, row, sw));
+    if (st.result && st.result.circ) block('', '', '<div class="ps-circ">' + circleLegendHtml(st.result.circ) + '</div>');   // proportional circles: sizes
   });
-  // 4. Service points and infrastructure that are ticked (on every page)
-  let pts = '';
-  document.querySelectorAll('#pointList .pt-row').forEach(r => {
-    if (!r.querySelector('input').checked) return;
-    const ic = r.querySelector('img, .pt-dot');
-    pts += row(ic ? ic.outerHTML : '', r.querySelectorAll('span')[ic && ic.tagName === 'SPAN' ? 1 : 0].textContent);
-  });
-  if (pts) block(t('pointData'), '', pts);
-  const bufKeys = Object.keys(pointLayers).filter(bufferVisible);          // service radius rings shown
-  if (bufKeys.length) {
-    block(t('bufLegend'), bufNoteText(bufKeys),
-      bufKeys.map(k => row(bufSwatches(k), t('pt_' + k) + ' · ' + radiiText(k))).join(''));
-  }
-  if (pointRing && map.hasLayer(pointRing.group)) {                      // rings of the one point that was clicked
-    const nm = (pointRing.m.feature && pointRing.m.feature._title) || t('pt_' + pointRing.key);
-    block(t('bufLegend'), bufNoteText([pointRing.key]), row(bufSwatches(pointRing.key), nm + ' · ' + radiiText(pointRing.key)));
-  }
+  // 3. Infrastructure lines that are ticked
   let inf = '';
-  document.querySelectorAll('#infraList .inf-row').forEach(r => {
-    if (!r.querySelector('input').checked) return;
-    const svg = r.querySelector('svg.inf-swatch'), name = r.querySelector('span:not(.inf-count)');
-    inf += row(svg ? svg.outerHTML : '', name ? name.textContent : '');
+  INFRA_GROUPS.forEach(g => g.layers.forEach(l => {
+    if (infraState[l.id].on && infraState[l.id].layer) inf += row(lineSwatch(l), infraName(l));
+  }));
+  block(t('infraTitle'), '', inf);
+  // 4. Outline of the selected areas, 5. Peru outline (as "Contorno Peru" in the template)
+  let lines = '';
+  if (SEL.items && SEL.items.length) lines += row('<i class="ps-line" style="border-color:#173b59"></i>', t('printSelectedN', { n: SEL.items.length }));
+  block('', '', lines);
+  return blocks.join('');
+}
+
+/* ----- Scale bar: a round length (1, 2, 3 or 5 × 10ⁿ) about a fifth of the map width, 4 black / white segments ----- */
+function psScale(frame) {
+  const box = frame && frame.querySelector('.ps-scale');
+  if (!box || !map) return;
+  const sz = map.getSize();
+  if (!sz.x || !sz.y) { box.innerHTML = ''; return; }
+  const y = sz.y / 2;
+  const mpp = map.distance(map.containerPointToLatLng([0, y]), map.containerPointToLatLng([sz.x, y])) / sz.x / psK();   // metres per page pixel at the middle of the map (map enlarged by k)
+  if (!isFinite(mpp) || mpp <= 0) { box.innerHTML = ''; return; }
+  const target = sz.x * psK() * 0.2 * mpp, pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const total = [5, 3, 2, 1].map(x => x * pow).find(x => x <= target) || pow;
+  const px = total / mpp, seg = 4, h = 4;
+  let bars = '';
+  for (let i = 0; i < seg; i++) {
+    bars += '<rect x="' + (i * px / seg).toFixed(2) + '" y="0" width="' + (px / seg).toFixed(2) + '" height="' + h + '" fill="' + (i % 2 ? '#fff' : '#1d3449') + '"/>';
+  }
+  const lbl = total >= 1000 ? fmtNum(total / 1000) + ' km' : fmtNum(total) + ' m';
+  box.innerHTML = '<svg width="' + px.toFixed(1) + '" height="' + h + '" viewBox="0 0 ' + px.toFixed(2) + ' ' + h + '">' + bars +
+    '<rect x="0" y="0" width="' + px.toFixed(2) + '" height="' + h + '" fill="none" stroke="#1d3449" stroke-width="0.8"/></svg><div>' + escapeHtml(lbl) + '</div>';
+}
+
+/* ----- Fitting: titles get smaller until they fit on one line; the legend gets smaller, then goes to two columns ----- */
+function psFitText(el, maxPt, minPt) {
+  if (!el) return;
+  let s = maxPt;
+  el.style.fontSize = s + 'pt';
+  while (el.scrollWidth > el.clientWidth + 1 && s > minPt) { s -= 0.5; el.style.fontSize = s + 'pt'; }
+}
+function psFitEl(el) {
+  const k = psK(), head = el.closest('.ps-titles');
+  const title = head && head.querySelector('[data-psf="title"]'), sub = head && head.querySelector('[data-psf="sub"]');
+  if (title) {
+    // one line, 24 pt down to 14 pt (× paper size); still too long: two lines, down to 9 pt
+    title.classList.remove('two');
+    psFitText(title, 24 * k, 14 * k);
+    if (title.scrollWidth > title.clientWidth + 1) {
+      title.classList.add('two');
+      let sz = 16 * k;
+      title.style.fontSize = sz + 'pt';
+      while (title.scrollHeight > title.clientHeight + 1 && sz > 9) { sz -= 0.5; title.style.fontSize = sz + 'pt'; }
+    }
+  }
+  // the subtitle stays clearly smaller than the title
+  if (sub) psFitText(sub, Math.min(12 * k, (parseFloat(title && title.style.fontSize) || 24 * k) * 0.62), 6);
+  psLiveResize();
+}
+function psLiveResize() {                     // single page: the header height may have changed, so the map frame too
+  if (!psLiveFrame || !map || !printSaved || psPrinting) return;
+  map.invalidateSize({ animate: false });
+  psL(() => psScale(psLiveFrame));
+}
+function psFitLegend(page) {
+  const lg = page.querySelector('.ps-legend'), left = page.querySelector('.ps-left');
+  if (!lg || !left) return;
+  const k = psK(), over = () => lg.scrollHeight > lg.clientHeight + 1 || lg.scrollWidth > lg.clientWidth + 1;
+  const tryFit = (max, min) => {
+    let s = max;
+    lg.style.fontSize = s + 'pt';
+    while (over() && s > min) { s -= 0.25; lg.style.fontSize = s + 'pt'; }
+    return !over();
+  };
+  lg.classList.remove('cols2');
+  left.classList.remove('wide');
+  if (tryFit(7.5 * k, 6 * k)) return;
+  lg.classList.add('cols2');
+  left.classList.add('wide');
+  tryFit(7.5 * k, 5 * k);
+}
+function psFitPage(page) {
+  const h = page.querySelector('.ps-head [data-psf]');
+  if (h) psFitEl(h);
+  psFitLegend(page);
+}
+function psFitAll() {
+  document.querySelectorAll('#psPages .ps-page').forEach(psFitPage);
+  if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => {
+    if (printSaved && !psPrinting) document.querySelectorAll('#psPages .ps-page').forEach(psFitPage);
   });
-  if (inf) block(t('infraTitle'), '', inf);
-  return blocks.length ? blocks.join('') : '<div class="ps-lnone">—</div>';
 }
 
 function initLeafletMap() {
@@ -2682,6 +3356,7 @@ function initLeafletMap() {
   else if (window.ATLAS_LOAD === 'missing') showNotice(t('noticeNoPack') + ' ' + whereAmI(), 30000);
 
   map.on('moveend', drawScreenLabels);        // area names follow the view
+  map.on('zoomend', resizePointIcons);        // service point icons: size by zoom (area names follow on moveend)
   let layerPopupAt = 0;
   map.on('popupopen', e => { if (e.popup._source) layerPopupAt = Date.now(); });
   map.on('click', e => {                     // district popup: with or without a layer ticked
@@ -2740,10 +3415,11 @@ function initLeafletMap() {
 }
 
 function setBasemap(type) {
-  const cfg = BASEMAPS[type] || BASEMAPS.street;
   if (baseLayer) map.removeLayer(baseLayer);
-  currentBasemap = type;
   tileErrorCount = 0;
+  if (type === 'none') { baseLayer = null; currentBasemap = 'none'; return; }   // no basemap: only the data layers
+  const cfg = BASEMAPS[type] || BASEMAPS.street;
+  currentBasemap = type;
 
   baseLayer = L.tileLayer(cfg.url, cfg.opts).addTo(map);
   baseLayer.bringToBack();
@@ -2783,15 +3459,29 @@ function switchAdminLevel(level) {
    1. data/atlas_index.js + one data/*.js per layer (made with make_atlas_data.html) — works by double-click.
    Layers not listed in data/atlas_index.js cannot be read: add them to capas.js and build again. */
 const dataLoading = {};                    // files being read right now (same request = same promise)
+/* Esri JSON ({features:[{attributes, geometry:{x, y}}]}, from ArcGIS "Features To JSON" without the GeoJSON option)
+   → GeoJSON. Points, lines (paths) and polygons (rings); anything already GeoJSON is returned as it is. */
+function esriToGeoJSON(d) {
+  if (!d || !Array.isArray(d.features) || !d.features.length || d.features[0].type === 'Feature' || !('attributes' in d.features[0])) return d;
+  const geom = g => !g ? null
+    : ('x' in g) ? { type: 'Point', coordinates: [g.x, g.y] }
+    : g.points ? { type: 'MultiPoint', coordinates: g.points }
+    : g.paths ? { type: 'MultiLineString', coordinates: g.paths }
+    : g.rings ? { type: 'Polygon', coordinates: g.rings }     // outer + holes; multi-part areas still draw correctly
+    : null;
+  return { type: 'FeatureCollection', features: d.features.map(f => ({ type: 'Feature', properties: f.attributes || {}, geometry: geom(f.geometry) })) };
+}
 function loadGeoJSON(path) {
   if (dataCache[path]) return Promise.resolve(dataCache[path]);
   if (dataLoading[path]) return dataLoading[path];
-  const found = findPacked(path), packed = found && found.type !== 'AtlasTable' ? found : null;
-  const entry = packed ? null : layerEntry(path);
+  const found = findPacked(path), entry = found && found.type !== 'AtlasTable' ? null : layerEntry(path);
+  const packed = (found && found.type !== 'AtlasTable' ? found : null) ||
+                 (!entry ? BUILTIN_POINTS[path.split('/').pop()] || null : null);   // built-in points when data/ does not have them yet
   const job = packed ? Promise.resolve(packed)
     : entry ? readLayerFile(entry)
     : Promise.reject(new Error('file'));
   return (dataLoading[path] = job.then(data => {
+    data = esriToGeoJSON(data);
     if (!data || !data.features) throw new Error('fail');
     const c = firstCoordinate(data);
     if (c && (Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90)) throw new Error('projected');
@@ -2917,13 +3607,24 @@ function joinTable(key, tab) {
 /* Find a layer already read (ATLAS_DATA). Exact name first; if a name differs only in accents,
    case, spaces, "_" or "-" (e.g. "Vias" / "Vías"), that file is used too. */
 function findPacked(path) {
+  const key = findPackedKey(path);
+  return key ? window.ATLAS_DATA[key] : null;
+}
+/* Name of the file in atlas_data.js: exact path, then the same path written a bit differently,
+   then (only if there is exactly one) a file with the same name in another folder */
+function findPackedKey(path) {
   const all = window.ATLAS_DATA;
   if (!all) return null;
-  if (all[path.normalize('NFC')]) return all[path.normalize('NFC')];
-  const want = looseName(path);
-  const key = Object.keys(all).find(k => looseName(k) === want);
+  if (all[path.normalize('NFC')]) return path.normalize('NFC');
+  const want = looseName(path), keys = Object.keys(all);
+  let key = keys.find(k => looseName(k) === want);
+  if (!key) {
+    const file = looseName(path.split('/').pop());
+    const same = keys.filter(k => looseName(k.split('/').pop()) === file);
+    if (same.length === 1) key = same[0];
+  }
   if (key) console.info('Using "' + key + '" for "' + path + '"');
-  return key ? all[key] : null;
+  return key || null;
 }
 
 function loadErrorText(err, file) {
@@ -3161,14 +3862,15 @@ function fmtNum(n, dec) {                 // dec: fixed decimals (e.g. 1 for per
   return Number(n).toLocaleString(currentLang === 'zh' ? 'zh-CN' : currentLang === 'es' ? 'es-PE' : 'en-US', o);
 }
 
-/* Up to 5 classes with about the same number of areas in each (quantiles of the values above 0).
+/* Up to 6 classes (one per colour) with about the same number of areas in each (quantiles of the values above 0).
    0 falls in the first (palest) class; only empty values are "No data". */
 function classBreaks(values) {
   const v = values.filter(x => x > 0).sort((a, b) => a - b);
   if (!v.length) return [];
   const cuts = [];
-  for (let i = 1; i < 5; i++) {
-    const c = v[Math.min(v.length - 1, Math.floor(i * v.length / 5))];
+  const K = ANALYSIS_COLORS.length;
+  for (let i = 1; i < K; i++) {
+    const c = v[Math.min(v.length - 1, Math.floor(i * v.length / K))];
     if (!cuts.length || c > cuts[cuts.length - 1]) cuts.push(c);
   }
   return cuts.filter(c => c > v[0]);
@@ -3177,8 +3879,7 @@ function classColor(val, breaks) {
   if (val === null || val === undefined || !isFinite(val)) return ANALYSIS_NODATA;
   let i = 0;
   while (i < breaks.length && val >= breaks[i]) i++;
-  const shift = ANALYSIS_COLORS.length - (breaks.length + 1);   // fewer classes: use the darker end
-  return ANALYSIS_COLORS[i + Math.max(0, shift)];
+  return classFill(i, breaks.length + 1);
 }
 
 /* Order of risk words, most severe first (other categories keep their count order) */
@@ -3192,14 +3893,14 @@ function severity(value) {
   return 9;
 }
 
-/* Risk words get matching colours (very high = dark red … very low = pale); other categories a palette */
+/* Risk words get matching colours (very high = darkest blue … very low = palest blue, as the UNHCR maps); other categories a palette */
 function categoryColor(value, order) {
   const s = normalizeText(value);
-  if (/muy\s*alt|very\s*high|extrem/.test(s)) return '#b30000';
-  if (/alt|high/.test(s)) return '#e34a33';
-  if (/medi|moder/.test(s)) return '#fc8d59';
-  if (/muy\s*baj|very\s*low/.test(s)) return '#fff3c4';
-  if (/baj|low/.test(s)) return '#fdd49e';
+  if (/muy\s*alt|very\s*high|extrem/.test(s)) return '#0b3754';
+  if (/alt|high/.test(s)) return '#0072bc';
+  if (/medi|moder/.test(s)) return '#4f9ed0';
+  if (/muy\s*baj|very\s*low/.test(s)) return '#cde3f1';
+  if (/baj|low/.test(s)) return '#8fc1e1';
   return CATEGORY_COLORS[order % CATEGORY_COLORS.length];
 }
 
@@ -3268,7 +3969,7 @@ function drawAnalysis(layer) {
   if (st.info.kind === 'points' && st.agg === 'none') {
     st.result = null;
     return Promise.resolve(done(L.geoJSON(st.data, {
-      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, color: '#fff', weight: 1, fillColor: '#e34a33', fillOpacity: 0.9 }),
+      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 4, color: '#fff', weight: 1, fillColor: '#0072bc', fillOpacity: 0.9 }),
       onEachFeature: (f, l) => l.bindPopup(() => propsPopup(analysisName(layer) + ' · ' + layer.year, f.properties))
     })));
   }
@@ -3287,7 +3988,7 @@ function drawAnalysis(layer) {
       const what = () => how === 'count' ? t('countRecords') : t('sumOf', { field: fieldLabel(how) });
       done(L.geoJSON({ type: 'FeatureCollection', features: areas }, {
         style: a => r.totals.get(a) > 0
-          ? { color: '#8d4a2f', weight: 0.6, opacity: 0.7, fillColor: classColor(r.totals.get(a), breaks), fillOpacity: 0.75 }
+          ? { color: '#ffffff', weight: 0.6, opacity: 0.9, fillColor: classColor(r.totals.get(a), breaks), fillOpacity: 0.85 }   // white lines between areas, as on the ArcGIS maps
           : { color: '#90a4ae', weight: 0.3, opacity: 0.35, fillColor: ANALYSIS_NODATA, fillOpacity: 0.1 },   // no data: faint
         onEachFeature: (a, l) => {
           st.layerOf.set(a, l);
@@ -3326,11 +4027,11 @@ function drawAnalysis(layer) {
   } else {
     st.result = { kind: 'single', all: feats.length };
   }
-  const fill = f => !field ? '#fc8d59' : isNum ? classColor(val(f), st.result.breaks) : st.result.colors.get(String(val(f) ?? '').trim() || NODATA_KEY);
+  const fill = f => !field ? '#0072bc' : isNum ? classColor(val(f), st.result.breaks) : st.result.colors.get(String(val(f) ?? '').trim() || NODATA_KEY);
   // Class of an area (for the legend highlight): category word, or number class (0, 1, … / 'nd')
   const classOf = f => !field ? null : isNum ? classIndex(val(f), st.result.breaks) : (String(val(f) ?? '').trim() || NODATA_KEY);
   const lit = f => st.hl === null || st.hl === undefined || classOf(f) === st.hl;
-  const areaStyle = f => lit(f) ? { color: '#8d4a2f', weight: 0.7, opacity: 0.8, fillColor: fill(f), fillOpacity: 0.7 }
+  const areaStyle = f => lit(f) ? { color: '#ffffff', weight: 0.6, opacity: 0.9, fillColor: fill(f), fillOpacity: 0.85 }   // white lines between areas
                                 : { color: '#b0bec5', weight: 0.3, opacity: 0.4, fillColor: fill(f), fillOpacity: 0.08 };
 
   // Second variable: proportional circles (area of the circle = value), drawn above the colours
@@ -3382,7 +4083,7 @@ function drawAnalysis(layer) {
 const CIRCLE_MAX_PX = 28;
 let anCircleRenderer = null;
 function circleRadius(v, max) { return Math.max(1.5, CIRCLE_MAX_PX * Math.sqrt(v / max)); }
-const CIRCLE_COLOR = '#0072bc';               // UNHCR blue: stands out on the warm risk colours
+const CIRCLE_COLOR = '#e8772e';               // orange: stands out on the blue map colours
 function circleStyle(on, r) {
   const w = r !== undefined && r < 3 ? 0 : 1.2;  // tiny circles without outline: no speckle at country scale
   return on ? { color: '#ffffff', weight: w, opacity: 0.95, fillColor: CIRCLE_COLOR, fillOpacity: 0.6 }
@@ -3409,7 +4110,7 @@ function circleLegendHtml(c) {
   let svg = '';
   refs.forEach(v => {
     const r = circleRadius(v, c.max), top = base - 2 * r;
-    svg += '<circle cx="' + (R + 2) + '" cy="' + (base - r) + '" r="' + r + '" fill="#0072bc" fill-opacity="0.18" stroke="#0072bc" stroke-width="1"/>' +
+    svg += '<circle cx="' + (R + 2) + '" cy="' + (base - r) + '" r="' + r + '" fill="' + CIRCLE_COLOR + '" fill-opacity="0.25" stroke="' + CIRCLE_COLOR + '" stroke-width="1"/>' +
            '<line x1="' + (R + 2) + '" y1="' + top + '" x2="' + (2 * R + 12) + '" y2="' + top + '" stroke="#9fb1bd" stroke-dasharray="2 2"/>' +
            '<text x="' + (2 * R + 15) + '" y="' + (top + 3.5) + '">' + escapeHtml(fmtNum(v)) + '</text>';
   });
@@ -3831,10 +4532,9 @@ function analysisTools(layer, st) {
                      ' class="an-leg ' + (st.hl === null || st.hl === undefined ? '' : st.hl === k ? 'on' : 'off') + '" title="' + escapeHtml(t('legPick')) + '"';
   if (r.kind === 'numeric') {
     const edges = [0].concat(r.breaks);
-    const shift = ANALYSIS_COLORS.length - (r.breaks.length + 1);
     edges.forEach((lo, i) => {
       const hi = r.breaks[i];
-      legend += '<div' + (pick(i) || ' class="an-leg"') + '><i style="background:' + ANALYSIS_COLORS[i + Math.max(0, shift)] + '"></i><span>' +
+      legend += '<div' + (pick(i) || ' class="an-leg"') + '><i style="background:' + classFill(i, r.breaks.length + 1) + '"></i><span>' +
                 (hi === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + ' – ' + fmtNum(hi)) + '</span></div>';
     });
     legend += '<div' + (pick('nd') || ' class="an-leg"') + '><i style="background:' + ANALYSIS_NODATA + '"></i><span>' + escapeHtml(t('noDataLbl')) + '</span></div>';
@@ -4041,13 +4741,9 @@ function renderPointList() {
 /* ---------- Service radius (buffer rings around service points) ----------
    Two straight-line rings around every point of a layer, in the layer's colour (inner solid, outer dashed).
    Distances depend on the kind of service (metres, inner first):
-     PAO, protection spaces, data collection : 5 km / 10 km   city services. 5 km follows the UNHCR primary
-                                                              health care coverage standard (5 km, about 1 hour on
-                                                              foot); 10 km = reachable by transport
-     CEBAF border centres                    : 150 km / 300 km  inner: neighbouring border posts overlap;
-                                                                outer: together they reach into the interior
-     UNHCR offices                           : 200 km / 400 km  inner: regional reach; outer: with the CEBAF rings,
-                                                                almost all of Peru is covered (national overview)
+     protection spaces : 5 km / 10 km      city services. 5 km follows the UNHCR primary health care coverage
+                                           standard (5 km, about 1 hour on foot); 10 km = reachable by transport
+     UNHCR offices     : 200 km / 400 km   inner: regional reach; outer: national overview
    The rings overlap on purpose: the light fills add up, so places near several points look darker.
    Only the part inside Peru is drawn (clipBuffersToPeru).
    To change a distance, edit BUFFER_RADII; the eye button, legend and print follow. */
@@ -4070,10 +4766,12 @@ function showPointRing(key, m) {
   }
   group.addTo(map);                                  // same pane as the layer rings: cut at the border of Peru too
   pointRing = { key: key, m: m, group: group };
+  bufferClipSync();
 }
 function hidePointRing() {
   if (pointRing && map) map.removeLayer(pointRing.group);
   pointRing = null;
+  bufferClipSync();
 }
 function bufNoteText(keys) {                        // the 5 km source is only mentioned when a 5 km ring is shown
   return t('bufNote') + (keys.some(k => radiiFor(k).includes(5000)) ? ' ' + t('bufRef') : '');
@@ -4103,7 +4801,7 @@ function clipBuffersToPeru() {
   defs.appendChild(clip);
   svg.insertBefore(defs, svg.firstChild);
   shapes.eachLayer(l => { if (l._path) clip.appendChild(l._path); });
-  group.setAttribute('clip-path', 'url(#peruBufferClip)');
+  bufferClipSync();
 }
 function bufferVisible(key) { const st = pointState[key]; return !!(st && st.on && st.buffer && st.layer); }
 function buildBuffer(key) {
@@ -4118,6 +4816,12 @@ function buildBuffer(key) {
   });
   return group;
 }
+function bufferClipSync() {                           // clip on only while some rings are on the map
+  const g = bufferRenderer && bufferRenderer._rootGroup;
+  if (!g || !document.getElementById('peruBufferClip')) return;
+  const any = !!pointRing || Object.keys(pointLayers).some(bufferVisible);
+  if (any) g.setAttribute('clip-path', 'url(#peruBufferClip)'); else g.removeAttribute('clip-path');
+}
 function updateBuffer(key) {                          // rings shown only while the layer itself is on
   const st = pointState[key];
   if (!map || !st) return;
@@ -4127,6 +4831,7 @@ function updateBuffer(key) {                          // rings shown only while 
   } else if (st.bufLayer && map.hasLayer(st.bufLayer)) {
     map.removeLayer(st.bufLayer);
   }
+  bufferClipSync();
 }
 function toggleBuffer(key) {
   const st = pointState[key];
@@ -4171,20 +4876,25 @@ function checkImage(url) {
 let pointDots = null;
 function pointDotRenderer() { return pointDots || (pointDots = L.svg({ pane: 'markerPane' })); }
 
+/* Icon of a point layer: the configured path, else the same file name next to the data that was found in atlas_data.js */
+function findPointIcon(cfg) {
+  const name = cfg.icon.split('/').pop(), dataKey = findPackedKey(cfg.data);
+  const tries = [cfg.icon];
+  if (dataKey) tries.push(dataKey.slice(0, dataKey.lastIndexOf('/') + 1) + name);
+  tries.push('point/' + name, name);
+  const next = i => i >= tries.length ? Promise.resolve(false)
+    : checkImage(encodeURI(tries[i])).then(ok => { if (ok) { cfg.icon = tries[i]; return true; } return next(i + 1); });
+  return next(0);
+}
 function loadPointLayer(key) {
   const cfg = pointLayers[key];
-  return Promise.all([loadGeoJSON(cfg.data), checkImage(encodeURI(cfg.icon))]).then(([data, iconOk]) => {
+  return Promise.all([loadGeoJSON(cfg.data), findPointIcon(cfg)]).then(([data, iconOk]) => {
     pointState[key].iconOk = iconOk;
-    const icon = L.icon({
-      iconUrl: encodeURI(cfg.icon),
-      iconSize: [POINT_ICON_SIZE, POINT_ICON_SIZE],
-      iconAnchor: [POINT_ICON_SIZE / 2, POINT_ICON_SIZE / 2],
-      popupAnchor: [0, -POINT_ICON_SIZE / 2]
-    });
+    const px = pointIconSize(map ? map.getZoom() : 5);
     pointState[key].layer = L.geoJSON(data, {
       pointToLayer: (f, latlng) => iconOk
-        ? L.marker(latlng, { icon: icon })
-        : L.circleMarker(latlng, { pane: 'markerPane', renderer: pointDotRenderer(), radius: 7, color: '#fff', weight: 2, fillColor: POINT_COLORS[key], fillOpacity: 1 }),
+        ? Object.assign(L.marker(latlng, { icon: pointIcon(cfg.icon, px) }), { _iconPx: px })
+        : L.circleMarker(latlng, { pane: 'markerPane', renderer: pointDotRenderer(), radius: 5, color: '#fff', weight: 2, fillColor: POINT_COLORS[key], fillOpacity: 1 }),
       onEachFeature: (f, layer) => {
         const title = pickField(f.properties || {}, POINT_NAME_FIELDS, true) || t('pt_' + key);
         f._title = title;                  // used by the search box
@@ -4674,9 +5384,9 @@ function calcResultHtml(l, c) {
             (it.share !== null && it.share !== undefined ? ' · ' + escapeHtml(t('shareLbl')) + ' ' + fmtNum(it.share, 1) + ' %' : '') + '</small></td>' +
             '<td>' + fmtNum(it.value, it.pct ? 1 : undefined) + (it.pct ? ' %' : '') + '</td></tr>';
     if (on) {                                // number shown on the map: its 5 classes
-      const br = resultBreaks(c, s, it.field), shift = ANALYSIS_COLORS.length - (br.length + 1);
-      html += '<tr class="mapon"><td colspan="2"><div class="cw-mlegend">' + [0].concat(br).map((lo, i) => '<span><i style="background:' + ANALYSIS_COLORS[i + Math.max(0, shift)] + '"></i>' +
-              (br[i] === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + '–' + fmtNum(br[i])) + '</span>').join('') + '</div></td></tr>';
+      const br = resultBreaks(c, s, it.field), one = br.length ? '' : classRangeText(s.hits.map(f => toNum((f.properties || {})[it.field])));
+      html += '<tr class="mapon"><td colspan="2"><div class="cw-mlegend">' + [0].concat(br).map((lo, i) => '<span><i style="background:' + classFill(i, br.length + 1) + '"></i>' +
+              (one || (br[i] === undefined ? '≥ ' + fmtNum(lo) : fmtNum(lo) + '–' + fmtNum(br[i]))) + '</span>').join('') + '</div></td></tr>';
     }
     html += '</tbody>';                      // each indicator is its own block, divided by a line
   });
@@ -5384,7 +6094,7 @@ function drawScreenLabels() {
   if (!scrLabels) scrLabels = L.layerGroup().addTo(map);
   scrLabels.clearLayers();
   if (!scrLabelsOn) return;
-  const v = map.getBounds(), size = map.getSize(), boxes = [];
+  const v = map.getBounds(), size = map.getSize(), boxes = pointIconBoxes(3);   // names go around the service point icons
   const name = f => String(f._name || (DEPT_DATA && DEPT_DATA.features.includes(f) ? deptName(f) : featName(f)) || '').trim();
   const items = scrLabelFeatures().map(f => {
     const b = boxOf(f);
@@ -5397,10 +6107,10 @@ function drawScreenLabels() {
     if (!pt) return;
     const ll = L.latLng(pt[1], pt[0]), p = map.latLngToContainerPoint(ll);
     if (p.x < 4 || p.y < 4 || p.x > size.x - 4 || p.y > size.y - 4) return;
-    const w = nm.length * 6.8 + 8, h = 14, box = [p.x - w / 2, p.y - h / 2, p.x + w / 2, p.y + h / 2];
-    if (boxes.some(q => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) return;
-    boxes.push(box);
-    L.marker(ll, { pane: 'scrLabelPane', interactive: false, keyboard: false,
+    const w = nm.length * 6.8 + 8, h = 14, pl = placeLabel(p, w, h, boxes, false);
+    if (!pl) return;
+    boxes.push(pl.b);
+    L.marker(map.containerPointToLatLng(pl.c), { pane: 'scrLabelPane', interactive: false, keyboard: false,
       icon: L.divIcon({ className: 'ps-label scr-label', html: '<span>' + escapeHtml(nm) + '</span>', iconSize: [0, 0] }) }).addTo(scrLabels);
   });
 }
@@ -5879,8 +6589,8 @@ function fltClasses(R, field) {
     }
   }
   const k = cuts.length + 1, edges = all.length ? [all[0]].concat(cuts, [all[all.length - 1]]) : [];
-  const colorIdx = k === 1 ? [4] : Array.from({ length: k }, (_, i) => Math.round(i * (ANALYSIS_COLORS.length - 1) / (k - 1)));
-  const items = Array.from({ length: k }, (_, i) => ({ key: 'c' + i, color: ANALYSIS_COLORS[colorIdx[i]],
+  const colorIdx = k === 1 ? [4] : Array.from({ length: k }, (_, i) => Math.round(i * (RISK_COLORS.length - 1) / (k - 1)));
+  const items = Array.from({ length: k }, (_, i) => ({ key: 'c' + i, color: RISK_COLORS[colorIdx[i]],
     label: edges.length ? fmtNum(edges[i]) + ' – ' + fmtNum(edges[i + 1]) : '—' })).reverse();   // highest class first
   return { num: true, items: items, keyOf: r => {
     const v = toNum(props(r)[field]);
@@ -6529,6 +7239,7 @@ setLanguage(savedLang);
 <!-- Print preview: toolbar (not printed), the pages, and an off-screen stage where the map is drawn for batch pages -->
 <div id="printSheet" aria-hidden="true">
   <div class="ps-toolbar" id="psToolbar"></div>
+  <div class="ps-tools" id="psTools"></div>   <!-- undo / redo / save / reset of the moved names (renderPrintToolbar) -->
   <div class="ps-pages" id="psPages"></div>
   <div class="ps-stage" id="psStage"></div>
 </div>
