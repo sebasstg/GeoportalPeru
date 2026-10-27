@@ -27,29 +27,19 @@ window.ATLAS_CONFIG = {
      radii : anillos de cobertura en metros [interior, exterior]
      name  : nombre en la lista (es obligatorio; en / zh usan es si faltan) */
   points: {
-    CEBAF: {
-      icon: 'assets/icons/cebaf.png',
-      data: 'pointdata_origin/MapasDistribucion — CEBAF/MapasDistribucion — CEBAF.geojson',
-      color: '#c62828', radii: [150000, 300000],
-      name: { en: 'CEBAF (border centres)', es: 'CEBAF (centros de frontera)', zh: 'CEBAF 边境服务中心' }
-    },
-    DataCollection: {
+    // Espacios de Protección: círculo blanco con borde negro y colibrí (símbolo de ArcGIS Pro)
+    ProtectionSpace: {
       icon: 'assets/icons/espacios_proteccion.png',
-      data: 'pointdata_origin/MapasDistribucion — EspaciosDeProtección_XYTableToPoint/MapasDistribucion — EspaciosDeProtección_XYTableToPoint.geojson',
-      color: '#ef6c00', radii: [5000, 10000],
-      name: { en: 'Data collection points', es: 'Puntos de recolección de datos', zh: '数据收集点' }
+      data: 'pointdata_origin/MapasDistribucion — EspaciosDeProtección_XYTableToPoint/Espacios de Protección.geojson',
+      color: '#0072bc', radii: [5000, 10000],
+      name: { en: 'Protection spaces', es: 'Espacios de Protección', zh: '保护空间' }
     },
+    // Oficinas ACNUR: círculo oscuro con el emblema blanco de ACNUR (UNHCR graphic styles)
     UNHCR: {
       icon: 'assets/icons/oficinas_acnur.png',
-      data: 'pointdata_origin/MapasDistribucion — OficinasACNUR/MapasDistribucion — OficinasACNUR.geojson',
-      color: '#0072bc', radii: [200000, 400000],
-      name: { en: 'UNHCR offices', es: 'Oficinas del ACNUR', zh: '难民署办事处' }
-    },
-    PAO: {
-      icon: 'assets/icons/paos.png',
-      data: 'pointdata_origin/MapasDistribucion — PAOs/MapasDistribucion — PAOs.geojson',
-      color: '#6a1b9a', radii: [5000, 10000],
-      name: { en: 'PAOs (orientation points)', es: 'PAO (puntos de atención y orientación)', zh: 'PAO 咨询服务点' }
+      data: 'pointdata_origin/MapasDistribucion — OficinasACNUR/Oficinas ACNUR.geojson',
+      color: '#1a1a1a', radii: [200000, 400000],
+      name: { en: 'UNHCR offices', es: 'Oficinas ACNUR', zh: '难民署办事处' }
     }
   },
 
